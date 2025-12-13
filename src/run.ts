@@ -65,6 +65,27 @@ async function autoScroll(page: Page) {
   });
 }
 
+async function collectTraderIds(page: Page): Promise<string[]> {
+  const ids = await page.evaluate(() => {
+    const result: string[] = [];
+    const links = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[];
+
+    for (const a of links) {
+      const href = a.getAttribute('href');
+      if (!href) continue;
+
+      if (href.includes('copy-trading/trader/') && href.includes('/futures')) {
+        const match = href.match(/copy-trading\/trader\/([^/]+)\/futures/);
+        if (match && match[1]) result.push(match[1]);
+      }
+    }
+
+    return Array.from(new Set(result)); // убираем дубли
+  });
+
+  return ids;
+}
+
 
 async function run(headless: boolean = true) {
   const { browser, page } = await launchBrowser(headless);
@@ -80,8 +101,34 @@ async function run(headless: boolean = true) {
 
         await autoScroll(page);          // ⬅ автоскролл
         await page.waitForTimeout(2000); // ⬅ дать догрузиться
-
+    
         await scren(page, 'Bitget');
+        let pageIndex = 1;
+
+        while (true) {
+            console.log(`Страница ${pageIndex}`);
+
+            await autoScroll(page);
+            await page.waitForTimeout(1000);
+
+            const traderIds = await collectTraderIds(page);
+            traderIds.forEach(id => console.log('Трейдер:', id));
+
+            try {
+                const nextBtn = page.locator('li.bit-pagination-next button');
+
+                await nextBtn.waitFor({ timeout: 3000 });
+                await nextBtn.click();
+
+                await page.waitForLoadState('domcontentloaded');
+                await page.waitForTimeout(1500);
+
+                pageIndex++;
+            } catch {
+                console.log('Кнопка "Вперед" недоступна — конец');
+                break;
+            }
+        }
 
         } catch (err) {
             console.error('Ошибка в run:', err);
