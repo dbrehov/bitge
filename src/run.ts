@@ -95,6 +95,8 @@ async function run(headless: boolean = true) {
         .split(/\r?\n/)
         .filter(Boolean);
 
+    const results: string[] = [];
+
     const { browser, page } = await launchBrowser(headless);
 
     for (const id of ids) {
@@ -113,20 +115,27 @@ async function run(headless: boolean = true) {
 
             const pnlIndex = lines.findIndex(line => line === 'PnL (%)');
 
-            if (pnlIndex === -1 || pnlIndex === 0) {
-                console.log('PnL (%) не найден');
-                continue;
+            let valueLine = 'NOT_FOUND';
+            if (pnlIndex > 0) {
+                valueLine = lines[pnlIndex - 1];
             }
 
-            const valueLine = lines[pnlIndex - 1];
-
             console.log(valueLine);
+            results.push(`ID: ${id} | Profit: ${valueLine}`);
         } catch (err) {
             console.error(`Ошибка для ${id}:`, err);
+            results.push(`ID: ${id} | ERROR`);
         }
     }
 
     await browser.close();
+
+    // Отправка файла в Telegram без сохранения на диск
+    const fileContent = results.join('\n');
+
+    await sendFileToTelegram(
+        Buffer.from(fileContent, 'utf-8')
+    );
 }
 
 (async () => {
