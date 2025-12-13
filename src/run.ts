@@ -17,23 +17,26 @@ async function sendToTelegram(message: string) {
   }
 }
 
-async function sendFileToTelegram(filePath: string, caption: string) {
+async function sendFileToTelegramFromMemory(content: string, filename: string, caption: string) {
   try {
     const formData = new FormData();
     formData.append('chat_id', config.chatId);
     formData.append('caption', caption);
-    formData.append('document', fs.createReadStream(filePath));
+
+    // передаём Buffer и указываем имя файла
+    formData.append('document', Buffer.from(content, 'utf-8'), { filename });
 
     await axios.post(`https://api.telegram.org/bot${config.OUR_BOT_TOKEN}/sendDocument`, formData, {
       headers: formData.getHeaders(),
     });
 
-    console.log('Файл отправлен в Telegram:', filePath);
+    console.log('Файл отправлен в Telegram (из памяти)');
   } catch (err) {
     console.error('Ошибка при отправке файла в Telegram:', err);
   }
 }
-export async function scren(page: Page, caption: string) {
+
+async function scren(page: Page, caption: string) {
   try {
     const imageBuffer = await page.screenshot({ type: 'png', fullPage: false });
     const formData = new FormData();
