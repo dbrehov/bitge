@@ -86,37 +86,42 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
-
 async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
-        try {
-    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-   } catch (err) {
-        console.error('Ошибка в run:', err);
-    } 
-
-
-for (let i = 0; i < 3; i++) {
     try {
-        const nextBtn = await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 5000 });
-
-        await nextBtn.click();
-
-        // Ждем пока страница подгрузит новые данные
-        await page.waitForLoadState('networkidle'); 
-        await new Promise(resolve => setTimeout(resolve, 2000)); // небольшой запас времени
-    } catch (error) {
-        console.log('Кнопка следующей страницы недоступна или ошибка:', error);
-        break;
+        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (err) {
+        console.error('Ошибка в run:', err);
     }
 
+    for (let i = 0; i < 3; i++) {
+        try {
+            const nextBtn = await page.waitForSelector(
+                'li.bit-pagination-next[aria-disabled="false"] button',
+                { timeout: 5000 }
+            );
 
-    await scren(page, 'Это скриншот');
+            await nextBtn.click();
+
+            // Ждем 5 секунд после клика
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            // Перезапуск страницы
+            await page.reload({ waitUntil: 'networkidle' });
+
+            // Небольшой запас времени после перезагрузки
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+            console.log('Кнопка следующей страницы недоступна или ошибка:', error);
+            break;
+        }
+
+        await scren(page, 'Это скриншот');
+    }
 }
 
-}
 
 (async () => {
   await run(false);
