@@ -88,55 +88,30 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 
 
 async function run(headless: boolean = true) {
-  const { browser, page } = await launchBrowser(headless);
-  try {
+    const { browser, page } = await launchBrowser(headless);
 
-        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', {
-            waitUntil: 'networkidle',
-            timeout: 60000,
-        });
+        try {
+    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+   } catch (err) {
+        console.error('Ошибка в run:', err);
+    } 
 
-        await page.waitForSelector('body', { timeout: 60000 });
-        await page.waitForTimeout(3000);
 
-        await autoScroll(page);          // ⬅ автоскролл
-        await page.waitForTimeout(2000); // ⬅ дать догрузиться
-    
-        await scren(page, 'Bitget');
-        let pageIndex = 1;
-
-        while (true) {
-            console.log(`Страница ${pageIndex}`);
-
-            await autoScroll(page);
-            await page.waitForTimeout(1000);
-
-            const traderIds = await collectTraderIds(page);
-            traderIds.forEach(id => console.log('Трейдер:', id));
-
-            try {
-                const nextBtn = page.locator('li.bit-pagination-next button');
-
-                await nextBtn.waitFor({ timeout: 3000 });
-                await nextBtn.click();
-
-                await page.waitForLoadState('domcontentloaded');
-                await page.waitForTimeout(1500);
-
-                pageIndex++;
-            } catch {
-                console.log('Кнопка "Вперед" недоступна — конец');
-                break;
-            }
+        for (let i = 0; i < 3; i++) { 
+        try {
+            await (await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 3000 })).click();
+        } catch (error) {
+            //console.log(error);
+            break; // если кнопка не найдена — выходим из цикла
         }
 
-        } catch (err) {
-            console.error('Ошибка в run:', err);
-        } finally {
-            await browser.close();
-        }
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(1500);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        await scren(page, 'Это скриншот');
     }
-
+}
 
 (async () => {
   await run(false);
