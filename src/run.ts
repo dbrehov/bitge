@@ -47,42 +47,23 @@ export async function scren(page: Page, caption: string) {
 }
 
 async function run(headless: boolean = true) {
-    const { browser, page } = await launchBrowser(headless);
-    try {
-        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
+  const { browser, page } = await launchBrowser(headless);
+  try {
+    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', {
+      waitUntil: 'networkidle',
+      timeout: 60000,
+    });
 
-        await page.waitForSelector('body');
-        await scren(page, `Ваш`);
-      
-    } catch (err) {
-        console.error('Ошибка в run:', err);
-    } 
+    await page.waitForTimeout(5000);
+    await scren(page, 'Bitget');
 
+  } catch (err) {
+    console.error('Ошибка в run:', err);
+  } finally {
     await browser.close();
-  //try {
-   // await page.goto('https://checkip.amazonaws.com/');
-   // await page.waitForSelector('body');
-   // await new Promise(resolve => setTimeout(resolve, 2000));
-   // const ip = await page.evaluate(() => document.body.innerText.trim());
-   // console.log('Публичный IP:', ip);
-   // await sendToTelegram(`Ваш публичный IP: ${ip}`);
-   // await scren(page, `Ваш публичный IP: ${ip}`);
-
-    //await page.goto('https://bot.sannysoft.com/');
-   // await page.goto('https://youtubetotranscript.com/transcript?v=R7cgUzfHW-I');
-   // await page.waitForSelector('body');
-   // await new Promise(resolve => setTimeout(resolve, 2000));
-
-   // const text = await page.locator('//div[@id="transcript"]').innerText();
-   // console.log(text);
-  //  await scren(page, `Ваш`);
-  //} catch (err) {
-   // console.error('Ошибка в run:', err);
-  //} finally {
-    //await browser.close();
-  //}
-
+  }
 }
+
 
 (async () => {
   await run(false);
