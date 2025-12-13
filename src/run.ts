@@ -46,23 +46,49 @@ export async function scren(page: Page, caption: string) {
   }
 }
 
+async function autoScroll(page: Page, step = 800, delay = 300) {
+  await page.evaluate(
+    async ({ step, delay }) => {
+      await new Promise<void>((resolve) => {
+        let totalHeight = 0;
+        const timer = setInterval(() => {
+          const scrollHeight = document.body.scrollHeight;
+          window.scrollBy(0, step);
+          totalHeight += step;
+          if (totalHeight >= scrollHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, delay);
+      });
+    },
+    { step, delay }
+  );
+}
+
 async function run(headless: boolean = true) {
   const { browser, page } = await launchBrowser(headless);
   try {
-    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', {
-      waitUntil: 'networkidle',
-      timeout: 60000,
-    });
 
-    await page.waitForTimeout(5000);
-    await scren(page, 'Bitget');
+        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', {
+            waitUntil: 'networkidle',
+            timeout: 60000,
+        });
 
-  } catch (err) {
-    console.error('Ошибка в run:', err);
-  } finally {
-    await browser.close();
-  }
-}
+        await page.waitForSelector('body', { timeout: 60000 });
+        await page.waitForTimeout(3000);
+
+        await autoScroll(page);          // ⬅ автоскролл
+        await page.waitForTimeout(2000); // ⬅ дать догрузиться
+
+        await scren(page, 'Bitget');
+
+        } catch (err) {
+            console.error('Ошибка в run:', err);
+        } finally {
+            await browser.close();
+        }
+    }
 
 
 (async () => {
