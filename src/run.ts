@@ -46,25 +46,25 @@ export async function scren(page: Page, caption: string) {
   }
 }
 
-async function autoScroll(page: Page, step = 800, delay = 300) {
-  await page.evaluate(
-    async ({ step, delay }) => {
-      await new Promise<void>((resolve) => {
-        let totalHeight = 0;
-        const timer = setInterval(() => {
-          const scrollHeight = document.body.scrollHeight;
-          window.scrollBy(0, step);
-          totalHeight += step;
-          if (totalHeight >= scrollHeight) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, delay);
-      });
-    },
-    { step, delay }
-  );
+async function autoScroll(page: Page) {
+  await page.evaluate(() => {
+    return new Promise<void>((resolve) => {
+      let totalHeight = 0;
+      const distance = 800;
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 300);
+    });
+  });
 }
+
 
 async function run(headless: boolean = true) {
   const { browser, page } = await launchBrowser(headless);
