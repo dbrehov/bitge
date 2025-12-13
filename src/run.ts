@@ -90,17 +90,10 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
-    if (!fs.existsSync(idsFile)) {
-        console.error('Файл ids.txt не найден');
-        return;
-    }
-
     const ids = fs
         .readFileSync(idsFile, 'utf-8')
         .split(/\r?\n/)
         .filter(Boolean);
-
-    const results: string[] = [];
 
     const { browser, page } = await launchBrowser(headless);
 
@@ -108,37 +101,24 @@ async function run(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures`;
 
         try {
+            console.log(`\n===== OPEN ${id} =====`);
+
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            const selector =
-                'span[data-testid="CopyTradingTraderHomeBaseDataProfitRateText"]';
+            // просто весь текст страницы
+            const pageText = await page.evaluate(() => {
+                return document.body.innerText;
+            });
 
-            await page.waitForSelector(selector, { timeout: 10000 });
-
-            const value = await page.$eval(
-                selector,
-                el => el.textContent?.trim() ?? ''
-            );
-
-            console.log(`ID: ${id} | Profit: ${value}`);
-
-            results.push(`${id} | ${value}`);
+            console.log(pageText);
         } catch (err) {
-            console.log(`ID: ${id} | ERROR`);
-            results.push(`${id} | ERROR`);
+            console.error(`Ошибка для ${id}:`, err);
         }
     }
 
     await browser.close();
-
-    // отправляем результат в Telegram (без сохранения на диск)
-    const resultText = results.join('\n');
-
-    await sendFileToTelegram(
-        resultText,
-        'copy_trading_result.txt'
-    );
 }
+
 
 (async () => {
 
