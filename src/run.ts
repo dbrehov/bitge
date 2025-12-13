@@ -88,16 +88,19 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 }
 
 async function run(headless: boolean = true) {
-    // Путь к файлу с ID
-    const idsFile = path.resolve('ids.txt'); // если нужно, можно сделать параметром функции
+    const idsFile = path.resolve('ids.txt');
+
     if (!fs.existsSync(idsFile)) {
-        console.error('Файл ids.txt не найден!');
+        console.error('Файл ids.txt не найден');
         return;
     }
 
-    // Читаем все ID
-    const fileContent = fs.readFileSync(idsFile, 'utf-8');
-    const ids = fileContent.split(/\r?\n/).filter(Boolean); // убираем пустые строки
+    const ids = fs
+        .readFileSync(idsFile, 'utf-8')
+        .split(/\r?\n/)
+        .filter(Boolean);
+
+    const results: string[] = [];
 
     const { browser, page } = await launchBrowser(headless);
 
@@ -105,32 +108,37 @@ async function run(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures`;
 
         try {
-            console.log(`Открываю страницу: ${url}`);
-            await page.goto(url);
+            await page.goto(url, { waitUntil: 'networkidle' });
 
-            // Ждем, чтобы страница полностью прогрузилась
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const selector =
+                'span[data-testid="CopyTradingTraderHomeBaseDataProfitRateText"]';
 
-            // Тут выполняем нужные действия, например скриншот
-            await scren(page, `Скриншот для ${id}`);
+            await page.waitForSelector(selector, { timeout: 10000 });
 
-            // Если нужно кликнуть на кнопки и ждать
-            try {
-                const nextBtn = await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 5000 });
-                await nextBtn.click();
-                await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
-                await page.reload({ waitUntil: 'networkidle' }); // перезагрузка страницы
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } catch (err) {
-                console.log(`Кнопка следующей страницы недоступна или ошибка для ID ${id}:`, err);
-            }
+            const value = await page.$eval(
+                selector,
+                el => el.textContent?.trim() ?? ''
+            );
 
+            console.log(`ID: ${id} | Profit: ${value}`);
+
+            results.push(`${id} | ${value}`);
         } catch (err) {
-            console.error(`Ошибка при обработке ID ${id}:`, err);
+            console.log(`ID: ${id} | ERROR`);
+            results.push(`${id} | ERROR`);
         }
     }
 
     await browser.close();
+
+    // отправляем результат в Telegram (без сохранения на диск)
+    const resultText = results.join('\n');
+
+    await sendTextFileToTelegram(
+        resultText,
+        'copy_trading_result.txt',
+        `Результаты копитрейдинга (${results.length})`
+    );
 }
 
 (async () => {
