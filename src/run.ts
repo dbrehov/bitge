@@ -32,19 +32,22 @@ async function sendFileToTelegram(filePath: string, caption: string) {
     console.error('Ошибка при отправке файла в Telegram:', err);
   }
 }
-export async function scren(page: Page, caption: string) {
+
+export async function scren(page: Page, caption: string = '', fullPage: boolean = false) {
   try {
-    const imageBuffer = await page.screenshot({ type: 'png', fullPage: false });
+    const imageBuffer = await page.screenshot({ type: 'png', fullPage });
     const formData = new FormData();
     formData.append('chat_id', config.chatId);
     formData.append('caption', caption);
     formData.append('photo', imageBuffer, { filename: 'screenshot.png', contentType: 'image/png' });
+
     await axios.post(`https://api.telegram.org/bot${config.OUR_BOT_TOKEN}/sendPhoto`, formData, { headers: formData.getHeaders() });
     console.log('Скриншот отправлен в Telegram с caption:', caption);
   } catch (err) {
     console.error('Ошибка при скриншоте или отправке в Telegram:', err);
   }
 }
+
 
 async function autoScroll(page: Page) {
   await page.evaluate(() => {
@@ -98,19 +101,36 @@ async function run(headless: boolean = true) {
     } 
 
 
-        for (let i = 0; i < 3; i++) { 
-        try {
-            await (await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 3000 })).click();
-        } catch (error) {
-            //console.log(error);
-            break; // если кнопка не найдена — выходим из цикла
+for (let i = 0; i < 10; i++) { // увеличиваем количество попыток
+    try {
+        // Проверяем, есть ли кнопка "Вперед" и она активна
+        const nextBtn = await page.$('li.bit-pagination-next button');
+        if (!nextBtn) {
+            console.log('Кнопка следующей страницы не найдена, выходим из цикла.');
+            break;
         }
 
-        await page.waitForLoadState('domcontentloaded');
-        await page.waitForTimeout(1500);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        await scren(page, 'Это скриншот');
+        const isDisabled = await nextBtn.getAttribute('aria-disabled');
+        if (isDisabled === 'true') {
+            console.log('Кнопка следующей страницы заблокирована, выходим из цикла.');
+            break;
+        }
+
+        await nextBtn.click();
+        await page.waitForLoadState('networkidle'); // ждём загрузки новой страницы
+        await new Promise(r => setTimeout(r, 2000)); // небольшой буфер
+    } catch (error) {
+        console.log('Ошибка при клике по кнопке следующей страницы:', error);
+        break;
     }
+
+    await scren(page);
+    await scren(page, 'Это скриншот');
+    await scren(page, 'Это полный скрин', true); // fullPage: true
+
+}
+
+
 }
 
 (async () => {
