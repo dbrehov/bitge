@@ -134,9 +134,11 @@ async function run(headless: boolean = true) {
     const fileContent = results.join('\n');
 
     await sendFileToTelegram(
-        Buffer.from(fileContent, 'utf-8')
+        Buffer.from(fileContent, 'utf-8'),
+        `Результаты копитрейдинга (${results.length})`
     );
 }
+
 
 (async () => {
 
