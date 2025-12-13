@@ -90,49 +90,77 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 }
 
 
-async function run(headless: boolean = true) {
-    const { browser, page } = await launchBrowser(headless);
+export async function run(headless: boolean = true) {
+  const { browser, page } = await launchBrowser(headless);
 
-        try {
-    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-   } catch (err) {
-        console.error('Ошибка в run:', err);
-    } 
+  try {
+    // Переходим на страницу с копи-трейдингом
+    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(3000);
 
+    // Автоскролл первой страницы
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        let totalHeight = 0;
+        const distance = 200;
+        const timer = setInterval(() => {
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+          if (totalHeight >= document.body.scrollHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 100);
+      });
+    });
 
-for (let i = 0; i < 10; i++) { // увеличиваем количество попыток
-    try {
-        // Проверяем, есть ли кнопка "Вперед" и она активна
-        const nextBtn = await page.$('li.bit-pagination-next button');
-        if (!nextBtn) {
-            console.log('Кнопка следующей страницы не найдена, выходим из цикла.');
-            break;
-        }
+    await scren(page, 'Страница 1');
 
-        const isDisabled = await nextBtn.getAttribute('aria-disabled');
-        if (isDisabled === 'true') {
-            console.log('Кнопка следующей страницы заблокирована, выходим из цикла.');
-            break;
-        }
-
+    // Цикл по кнопке "Следующая"
+    for (let i = 1; i < 100; i++) { // 100 — максимум, можно больше
+      try {
+        // Ждем, что кнопка доступна
+        const nextBtn = await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 5000 });
         await nextBtn.click();
-        await page.waitForLoadState('networkidle'); // ждём загрузки новой страницы
-        await new Promise(r => setTimeout(r, 2000)); // небольшой буфер
-    } catch (error) {
-        console.log('Ошибка при клике по кнопке следующей страницы:', error);
-        break;
+        console.log(`Кликнули по следующей странице: ${i + 1}`);
+
+        // Пауза после клика
+        await page.waitForTimeout(3000);
+
+        // Перезагрузка страницы для надежности
+        await page.reload({ waitUntil: 'networkidle' });
+        console.log(`Страница ${i + 1} перезагружена`);
+
+        // Автоскролл страницы
+        await page.evaluate(async () => {
+          await new Promise<void>((resolve) => {
+            let totalHeight = 0;
+            const distance = 200;
+            const timer = setInterval(() => {
+              window.scrollBy(0, distance);
+              totalHeight += distance;
+              if (totalHeight >= document.body.scrollHeight) {
+                clearInterval(timer);
+                resolve();
+              }
+            }, 100);
+          });
+        });
+
+        // Скриншот страницы
+        await scren(page, `Страница ${i + 1}`);
+      } catch (err) {
+        console.log('Кнопка следующей страницы недоступна или ошибка:', err);
+        break; // если кнопка не доступна — выходим из цикла
+      }
     }
 
-    await scren(page);
-    await scren(page, 'Это скриншот');
-    await scren(page, 'Это полный скрин', true); // fullPage: true
-
+  } catch (err) {
+    console.error('Ошибка в run:', err);
+  } finally {
+    await browser.close();
+  }
 }
-
-
-}
-
 (async () => {
   await run(false);
   //await run();
