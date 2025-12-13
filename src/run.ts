@@ -90,7 +90,7 @@ async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
     try {
-        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
+        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all/5');
         await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (err) {
         console.error('Ошибка в run:', err);
