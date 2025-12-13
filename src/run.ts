@@ -104,23 +104,23 @@ async function run(headless: boolean = true) {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            const pageText = await page.evaluate(() => {
-                return document.body.innerText;
-            });
+            const pageText = await page.evaluate(() => document.body.innerText);
 
-            const start = pageText.indexOf('Данные');
-            const end = pageText.indexOf('PnL (%)');
+            const lines = pageText
+                .split('\n')
+                .map(l => l.trim())
+                .filter(Boolean);
 
-            if (start === -1 || end === -1 || end <= start) {
-                console.log('Нужный блок не найден');
+            const pnlIndex = lines.findIndex(line => line === 'PnL (%)');
+
+            if (pnlIndex === -1 || pnlIndex === 0) {
+                console.log('PnL (%) не найден');
                 continue;
             }
 
-            const result = pageText
-                .slice(start + 'Данные'.length, end)
-                .trim();
+            const valueLine = lines[pnlIndex - 1];
 
-            console.log(result);
+            console.log(valueLine);
         } catch (err) {
             console.error(`Ошибка для ${id}:`, err);
         }
