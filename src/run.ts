@@ -47,43 +47,18 @@ export async function scren(page: Page, caption: string) {
 }
 
 async function run(headless: boolean = true) {
-    let allText = '';
     const { browser, page } = await launchBrowser(headless);
-    const raw = process.argv[2] || "";
-    const ids = raw.split("|");
+    try {
+        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
 
-    for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        console.log(`Обрабатываю ${i + 1}/${ids.length}:`, id);
+        await page.waitForSelector('body');
+        await scren(page, `Ваш`);
+      
+    } catch (err) {
+        console.error('Ошибка в run:', err);
+    } 
 
-        try {
-        await page.goto(`https://youtubetotranscript.com/transcript?v=${id}`, { timeout: 60000 });
-        await page.waitForSelector('body', { timeout: 60000 });
-        try {
-            const text = await page.locator('//div[@id="transcript"]').innerText({ timeout: 60000 });
-            allText += text + '\n\n'; // добавляем с разделением
-        console.log(text);
-        } catch {
-            console.log(`Транскрипт не найден для видео ${id}`);
-        }
-
-        } catch (err) {
-            console.error(`Не удалось загрузить видео ${id}:`, err);
-            continue; // переходим к следующему видео
-        }
-
-
-    }
-    const filePath = 'all_transcripts.txt';
-    fs.writeFileSync(filePath, allText, 'utf-8');
-    console.log('Все транскрипты сохранены в файл', filePath);
-
-    await sendFileToTelegram(filePath, 'Все транскрипты видео');
-
-  //try {
-   // await page.goto('https://checkip.amazonaws.com/');
-   // await page.
-    //}
+    await browser.close();
   //try {
    // await page.goto('https://checkip.amazonaws.com/');
    // await page.waitForSelector('body');
