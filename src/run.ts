@@ -2,6 +2,7 @@ import { launchBrowser } from './launch';
 import { Page } from 'playwright';
 import axios from 'axios';
 import fs from 'fs';
+import path from 'path';
 import FormData from 'form-data';
 import config from './config';
 
@@ -87,43 +88,53 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 }
 
 async function run(headless: boolean = true) {
+    // Путь к файлу с ID
+    const idsFile = path.resolve('ids.txt'); // если нужно, можно сделать параметром функции
+    if (!fs.existsSync(idsFile)) {
+        console.error('Файл ids.txt не найден!');
+        return;
+    }
+
+    // Читаем все ID
+    const fileContent = fs.readFileSync(idsFile, 'utf-8');
+    const ids = fileContent.split(/\r?\n/).filter(Boolean); // убираем пустые строки
+
     const { browser, page } = await launchBrowser(headless);
 
-    try {
-        await page.goto('https://www.bitget.com/ru/copy-trading/futures/all/5');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (err) {
-        console.error('Ошибка в run:', err);
-    }
+    for (const id of ids) {
+        const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures`;
 
-    for (let i = 0; i < 3; i++) {
         try {
-            const nextBtn = await page.waitForSelector(
-                'li.bit-pagination-next[aria-disabled="false"] button',
-                { timeout: 5000 }
-            );
+            console.log(`Открываю страницу: ${url}`);
+            await page.goto(url);
 
-            await nextBtn.click();
-
-            // Ждем 5 секунд после клика
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            // Перезапуск страницы
-            await page.reload({ waitUntil: 'networkidle' });
-
-            // Небольшой запас времени после перезагрузки
+            // Ждем, чтобы страница полностью прогрузилась
             await new Promise(resolve => setTimeout(resolve, 2000));
-        } catch (error) {
-            console.log('Кнопка следующей страницы недоступна или ошибка:', error);
-            break;
-        }
 
-        await scren(page, 'Это скриншот');
+            // Тут выполняем нужные действия, например скриншот
+            await scren(page, `Скриншот для ${id}`);
+
+            // Если нужно кликнуть на кнопки и ждать
+            try {
+                const nextBtn = await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 5000 });
+                await nextBtn.click();
+                await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
+                await page.reload({ waitUntil: 'networkidle' }); // перезагрузка страницы
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (err) {
+                console.log(`Кнопка следующей страницы недоступна или ошибка для ID ${id}:`, err);
+            }
+
+        } catch (err) {
+            console.error(`Ошибка при обработке ID ${id}:`, err);
+        }
     }
+
+    await browser.close();
 }
 
-
 (async () => {
+
   await run(false);
   //await run();
 
