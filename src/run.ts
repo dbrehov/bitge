@@ -32,22 +32,19 @@ async function sendFileToTelegram(filePath: string, caption: string) {
     console.error('Ошибка при отправке файла в Telegram:', err);
   }
 }
-
-export async function scren(page: Page, caption: string = '', fullPage: boolean = false) {
+export async function scren(page: Page, caption: string) {
   try {
-    const imageBuffer = await page.screenshot({ type: 'png', fullPage });
+    const imageBuffer = await page.screenshot({ type: 'png', fullPage: false });
     const formData = new FormData();
     formData.append('chat_id', config.chatId);
     formData.append('caption', caption);
     formData.append('photo', imageBuffer, { filename: 'screenshot.png', contentType: 'image/png' });
-
     await axios.post(`https://api.telegram.org/bot${config.OUR_BOT_TOKEN}/sendPhoto`, formData, { headers: formData.getHeaders() });
     console.log('Скриншот отправлен в Telegram с caption:', caption);
   } catch (err) {
     console.error('Ошибка при скриншоте или отправке в Telegram:', err);
   }
 }
-
 
 async function autoScroll(page: Page) {
   await page.evaluate(() => {
@@ -90,77 +87,37 @@ async function collectTraderIds(page: Page): Promise<string[]> {
 }
 
 
-export async function run(headless: boolean = true) {
-  const { browser, page } = await launchBrowser(headless);
+async function run(headless: boolean = true) {
+    const { browser, page } = await launchBrowser(headless);
 
-  try {
-    // Переходим на страницу с копи-трейдингом
-    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(3000);
+        try {
+    await page.goto('https://www.bitget.com/ru/copy-trading/futures/all');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+   } catch (err) {
+        console.error('Ошибка в run:', err);
+    } 
 
-    // Автоскролл первой страницы
-    await page.evaluate(async () => {
-      await new Promise<void>((resolve) => {
-        let totalHeight = 0;
-        const distance = 200;
-        const timer = setInterval(() => {
-          window.scrollBy(0, distance);
-          totalHeight += distance;
-          if (totalHeight >= document.body.scrollHeight) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, 100);
-      });
-    });
 
-    await scren(page, 'Страница 1');
-
-    // Цикл по кнопке "Следующая"
-    for (let i = 1; i < 100; i++) { // 100 — максимум, можно больше
-      try {
-        // Ждем, что кнопка доступна
+for (let i = 0; i < 3; i++) {
+    try {
         const nextBtn = await page.waitForSelector('li.bit-pagination-next[aria-disabled="false"] button', { timeout: 5000 });
+
         await nextBtn.click();
-        console.log(`Кликнули по следующей странице: ${i + 1}`);
 
-        // Пауза после клика
-        await page.waitForTimeout(3000);
-
-        // Перезагрузка страницы для надежности
-        await page.reload({ waitUntil: 'networkidle' });
-        console.log(`Страница ${i + 1} перезагружена`);
-
-        // Автоскролл страницы
-        await page.evaluate(async () => {
-          await new Promise<void>((resolve) => {
-            let totalHeight = 0;
-            const distance = 200;
-            const timer = setInterval(() => {
-              window.scrollBy(0, distance);
-              totalHeight += distance;
-              if (totalHeight >= document.body.scrollHeight) {
-                clearInterval(timer);
-                resolve();
-              }
-            }, 100);
-          });
-        });
-
-        // Скриншот страницы
-        await scren(page, `Страница ${i + 1}`);
-      } catch (err) {
-        console.log('Кнопка следующей страницы недоступна или ошибка:', err);
-        break; // если кнопка не доступна — выходим из цикла
-      }
+        // Ждем пока страница подгрузит новые данные
+        await page.waitForLoadState('networkidle'); 
+        await new Promise(resolve => setTimeout(resolve, 2000)); // небольшой запас времени
+    } catch (error) {
+        console.log('Кнопка следующей страницы недоступна или ошибка:', error);
+        break;
     }
 
-  } catch (err) {
-    console.error('Ошибка в run:', err);
-  } finally {
-    await browser.close();
-  }
+
+    await scren(page, 'Это скриншот');
 }
+
+}
+
 (async () => {
   await run(false);
   //await run();
