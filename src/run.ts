@@ -134,10 +134,9 @@ async function run(headless: boolean = true) {
     // отправляем результат в Telegram (без сохранения на диск)
     const resultText = results.join('\n');
 
-    await sendTextFileToTelegram(
+    await sendFileToTelegram(
         resultText,
-        'copy_trading_result.txt',
-        `Результаты копитрейдинга (${results.length})`
+        'copy_trading_result.txt'
     );
 }
 
