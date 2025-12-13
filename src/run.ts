@@ -17,11 +17,13 @@ async function sendToTelegram(message: string) {
   }
 }
 
-async function sendFileToTelegram(content: string, filename: string, caption: string) {
+async function sendFileToTelegramFromMemory(content: string, filename: string, caption: string) {
   try {
     const formData = new FormData();
     formData.append('chat_id', config.chatId);
     formData.append('caption', caption);
+
+    // передаём Buffer и указываем имя файла
     formData.append('document', Buffer.from(content, 'utf-8'), { filename });
 
     await axios.post(`https://api.telegram.org/bot${config.OUR_BOT_TOKEN}/sendDocument`, formData, {
@@ -132,12 +134,15 @@ async function run(headless: boolean = true) {
     await browser.close();
 
     // Отправка файла в Telegram без сохранения на диск
-    const fileContent = results.join('\n');
+// после сбора всех results
+const fileContent = results.join('\n');
 
-    await sendFileToTelegram(
-        Buffer.from(fileContent, 'utf-8'),
-        `Результаты копитрейдинга (${results.length})`
-    );
+await sendFileToTelegramFromMemory(
+    fileContent,
+    'copy_trading_result.txt',
+    `Результаты копитрейдинга (${results.length})`
+);
+
 }
 
 
