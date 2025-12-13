@@ -101,16 +101,26 @@ async function run(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures`;
 
         try {
-            console.log(`\n===== OPEN ${id} =====`);
-
+            console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            // просто весь текст страницы
             const pageText = await page.evaluate(() => {
                 return document.body.innerText;
             });
 
-            console.log(pageText);
+            const start = pageText.indexOf('Данные');
+            const end = pageText.indexOf('PnL (%)');
+
+            if (start === -1 || end === -1 || end <= start) {
+                console.log('Нужный блок не найден');
+                continue;
+            }
+
+            const result = pageText
+                .slice(start + 'Данные'.length, end)
+                .trim();
+
+            console.log(result);
         } catch (err) {
             console.error(`Ошибка для ${id}:`, err);
         }
@@ -118,7 +128,6 @@ async function run(headless: boolean = true) {
 
     await browser.close();
 }
-
 
 (async () => {
 
