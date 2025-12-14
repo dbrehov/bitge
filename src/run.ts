@@ -186,6 +186,9 @@ await sendFileToTelegramFromMemory(
 );
 
 }
+
+
+
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
@@ -207,8 +210,9 @@ async function run(headless: boolean = true) {
 
 
 
+        try {
+            console.log(`\n===== ${id} =====`);
 
-            try {
     // Вешаем обработчик до перехода
     await page.evaluate(() => {
         const observer = new MutationObserver(mutations => {
@@ -224,13 +228,6 @@ async function run(headless: boolean = true) {
         observer.observe(document.body, { childList: true, subtree: true });
     });
 
-    // Переходим на страницу
-    await page.goto('https://example.com', { waitUntil: 'domcontentloaded' });
-
-} catch (err) {
-    console.log('Navigation error:', err);
-}
-            console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
             try {
                 await page.locator('button.bit-button is-round \\!text-content-tertiary').click();
