@@ -311,8 +311,17 @@ async function run4(headless: boolean = true) {
 
 
 async function run(headless: boolean = true) {
-    const { browser, page } = await launchBrowser(headless);
+        const idsFile = path.resolve('ids.txt');
 
+    const ids = fs
+        .readFileSync(idsFile, 'utf-8')
+        .split(/\r?\n/)
+        .filter(Boolean);
+
+    const results: string[] = [];
+
+    const { browser, page } = await launchBrowser(headless);
+ for (const id of ids) {
         // Ловим console сообщения из страницы
     page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
@@ -398,6 +407,7 @@ const pnlIndex = lines.findIndex(line => line === 'Ордер №');
             console.error(`Ошибка для ${id}:`, err);
             results.push(`ID: ${id} | ERROR`);
         }
+ }
     } finally {
         // Браузер можно не закрывать, чтобы проверить страницу вручную
          await browser.close();
