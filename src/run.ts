@@ -171,7 +171,7 @@ async function run(headless: boolean = true) {
                 .map(l => l.trim())
                 .filter(Boolean);
             //console.log(lines)
-            const pnlIndex = lines.findIndex(line => line === 'Previous')[1];
+            const pnlIndex = lines.findIndex(line => line === 'BTCUSDT')[1];
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
