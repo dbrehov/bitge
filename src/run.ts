@@ -228,7 +228,8 @@ async function run(headless: boolean = true) {
         observer.observe(document.body, { childList: true, subtree: true });
     });
 
-            await page.goto(url, { waitUntil: 'networkidle' });
+            //await page.goto(url, { waitUntil: 'networkidle' });
+            await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
             try {
                 await page.locator('button.bit-button is-round \\!text-content-tertiary').click();
 
