@@ -165,7 +165,7 @@ async function run(headless: boolean = true) {
             await page.goto(url, { waitUntil: 'networkidle' });
             try {
                 await page.locator('button.bit-button is-round \\!text-content-tertiary').click();
-                await page.waitForSelector('body');
+
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
             } catch (err) {
                 console.log(`Кнопка следующей страницы недоступна:`, err);
@@ -190,8 +190,9 @@ async function run(headless: boolean = true) {
             console.error(`Ошибка для ${id}:`, err);
             results.push(`ID: ${id} | ERROR`);
         }
-    }
+
     await scren(page, 'Это скриншот');
+    }
     await browser.close();
 
     // Отправка файла в Telegram без сохранения на диск
