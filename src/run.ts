@@ -231,7 +231,21 @@ async function run(headless: boolean = true) {
             //await page.goto(url, { waitUntil: 'networkidle' });
             await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
             try {
-                await page.locator('button.bit-button is-round \\!text-content-tertiary').click();
+                try {
+                    // Ждём кнопку "Вперед" в DOM (можно задать короткий timeout)
+                    const nextButton = await page.waitForSelector(
+                        'li.bit-pagination-next[aria-disabled="false"] > button.bit-pagination-item-link',
+                        { timeout: 3000 } // короткий таймаут, чтобы не тормозить
+                     );
+
+                    // Нажимаем кнопку
+                await nextButton.click();
+                console.log('Clicked "Вперед" button');
+
+            } catch {
+                console.log('"Вперед" button not found or disabled');
+            }
+
 
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
                 // Press enter
