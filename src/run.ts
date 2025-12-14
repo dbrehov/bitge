@@ -175,7 +175,7 @@ async function run(headless: boolean = true) {
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
-                valueLine = lines[pnlIndex + 1]+ lines[pnlIndex + 2]+ lines[pnlIndex + 3];       
+                valueLine = lines[pnlIndex + 4]+ lines[pnlIndex + 5]+ lines[pnlIndex + 6];       
             }
 
             console.log(valueLine);
