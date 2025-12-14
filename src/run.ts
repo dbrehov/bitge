@@ -229,7 +229,46 @@ async function run(headless: boolean = true) {
     });
 
             //await page.goto(url, { waitUntil: 'networkidle' });
+    // Ловим появление pop-up
+page.on('console', msg => {
+    if (msg.text().startsWith('POPUP DETECTED:')) {
+        console.log(msg.text());
+    }
+});
+
+await page.evaluate(() => {
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node instanceof HTMLElement && node.matches('div.mi-overlay > div[role="dialog"][aria-label="Ограничение по IP"]')) {
+                    console.log('POPUP DETECTED:', node.innerText);
+                }
+            }
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+});
+
+// Ждем загрузку страницы
             await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
+                // После появления pop-up ставим галку и кликаем кнопку
+try {
+    // Найти чекбокс
+    const checkbox = await page.waitForSelector('input.mi-checkbox__original', { timeout: 5000 });
+    await checkbox.check(); // ставим галку
+
+    // Найти кнопку "Продолжить использовать биржу Bitget" (она активна после галки)
+    const button = await page.waitForSelector('button.mi-button:not([disabled]) >> text=Продолжить использовать биржу Bitget', { timeout: 5000 });
+    await button.click();
+
+    console.log('Popup handled: checkbox checked and button clicked');
+
+} catch {
+    console.log('Popup not found or button not clickable');
+}
+
+
+
             try {
                 try {
                     // Ждём кнопку "Вперед" в DOM (можно задать короткий timeout)
