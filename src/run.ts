@@ -400,8 +400,8 @@ async function run(headless: boolean = true) {
 
                 const pnlIndex = lines.findIndex(line => line === 'Ордер №');
                 let valueLine = 'NOT_FOUND';
-                if (pnlIndex >= 0 && pnlIndex + 9 < lines.length) {
-                    valueLine = lines[pnlIndex + 9];
+                if (pnlIndex > 0) {
+                    valueLine = lines[pnlIndex + 7];       
                 }
 
                 console.log(valueLine);
