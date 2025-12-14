@@ -347,42 +347,40 @@ async function run(headless: boolean = true) {
 
         // Ждём немного, чтобы страница успела обновиться
         await page.waitForTimeout(3000);   
-    const buttonSelector = 'button.bit-button';
-
-        await scren(page, 'Это скриншот');
     try {
-        // Ждём, пока кнопка появится и будет видимой с нужным текстом
-        await page.waitForFunction(
-            (selector) => {
-                const btns = Array.from(document.querySelectorAll<HTMLButtonElement>(selector));
-                const btn = btns.find(b => b.innerText.includes('Активные элитные сделки'));
-                return btn !== undefined && !btn.disabled && btn.offsetParent !== null;
-            },
-            buttonSelector,
-            { timeout: 15000 }
-        );
+        // Ждём, пока появится хотя бы одна видимая кнопка с нужным текстом
+        await page.waitForFunction(() => {
+            const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
+            return buttons.some(btn =>
+                btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
+            );
+        }, { timeout: 15000 });
 
-        // Берём саму кнопку
-        const buttons = await page.$$(buttonSelector);
-        const targetButton = buttons.find(async b => {
-            const text = await b.innerText();
-            return text.includes('Активные элитные сделки');
-        });
+        // Берём все кнопки и фильтруем видимые с точным текстом
+        const buttons = await page.$$('button.bit-button');
+        let targetButton = null;
+
+        for (const btn of buttons) {
+            const text = (await btn.innerText()).trim();
+            const box = await btn.boundingBox(); // проверка видимости
+            if (text === 'Активные элитные сделки' && box) {
+                targetButton = btn;
+                break;
+            }
+        }
 
         if (!targetButton) {
-            console.log('Button not found');
+            console.log('Target button not found');
             return;
         }
 
-        await scren(page, 'Это скриншот');
         // Скроллим и кликаем
         await targetButton.scrollIntoViewIfNeeded();
         await targetButton.click({ force: true });
-        console.log('Clicked "Активные элитные сделки" safely');
+        console.log('Clicked correct "Активные элитные сделки" button');
 
-        await scren(page, 'Это скриншот');
     } catch (err) {
-        console.log('Failed to click the button safely:', err);
+        console.log('Failed to click the correct button:', err);
     }
         await scren(page, 'Это скриншот');
 } catch (err) {
