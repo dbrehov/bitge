@@ -175,7 +175,12 @@ async function run(headless: boolean = true) {
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
-                valueLine = lines[pnlIndex + 1]+ lines[pnlIndex + 2]+ lines[pnlIndex + 3]            console.error(`Ошибка для ${id}:`, err);
+                valueLine = lines[pnlIndex + 1]+ lines[pnlIndex + 2]+ lines[pnlIndex + 3];       
+            }
+
+            console.log(valueLine);
+            results.push(`ID: ${id} | Profit: ${valueLine}`);
+        } catch (err) {
             console.error(`Ошибка для ${id}:`, err);
             results.push(`ID: ${id} | ERROR`);
         }
