@@ -282,7 +282,7 @@ await sendFileToTelegramFromMemory(
 }
 
 
-async function run(headless: boolean = true) {
+async function run4(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
     try {
@@ -303,6 +303,60 @@ async function run(headless: boolean = true) {
     } catch (err) {
         console.log('Popup not found within timeout or selector mismatch');
     } finally {
+        // await browser.close();
+    }
+}
+
+async function run(headless: boolean = false) {
+    const browser = await chromium.launch({ headless });
+    const page = await browser.newPage();
+
+    // Слушаем console браузера, чтобы видеть сообщения из evaluate
+    page.on('console', msg => {
+        console.log('BROWSER LOG:', msg.text());
+    });
+
+    try {
+        // Навигация на страницу
+        await page.goto(
+            'https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order',
+            { waitUntil: 'networkidle' }
+        );
+
+        // Ждём появления pop-up с ограничением по IP
+        const popup = await page.waitForSelector(
+            'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
+            { timeout: 15000, state: 'visible' }
+        );
+
+        // Выводим текст pop-up
+        const popupText = await popup.evaluate(el => (el as HTMLElement).innerText);
+        console.log('POPUP TEXT:\n', popupText);
+
+        // Ставим галку в чекбоксе
+        const checkbox = await page.waitForSelector('input.mi-checkbox__original', { timeout: 5000 });
+        await checkbox.check(); // отмечаем галку
+
+        // Ждём, когда кнопка "Продолжить использовать биржу Bitget" станет активной
+        const continueButton = await page.waitForSelector(
+            'div.mi-dialog__footer button.mi-button:has-text("Продолжить использовать биржу Bitget"):not([disabled])',
+            { timeout: 5000 }
+        );
+        await continueButton.click();
+        console.log('Clicked "Продолжить использовать биржу Bitget"');
+
+        // При необходимости можно аналогично нажать вторую кнопку
+        // const walletButton = await page.waitForSelector(
+        //     'div.mi-dialog__footer button.mi-button:has-text("Перейти в Bitget Wallet"):not([disabled])',
+        //     { timeout: 5000 }
+        // );
+        // await walletButton.click();
+        // console.log('Clicked "Перейти в Bitget Wallet"');
+
+    } catch (err) {
+        console.log('Error handling pop-up or navigation:', err);
+    } finally {
+        // Браузер можно не закрывать, чтобы проверить страницу вручную
         // await browser.close();
     }
 }
