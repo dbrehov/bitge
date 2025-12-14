@@ -186,25 +186,6 @@ await sendFileToTelegramFromMemory(
 );
 
 }
-
-async function logRestrictedIpPopup(page: any) {
-    try {
-        const dialog = await page.waitForSelector(
-            'div[role="dialog"][aria-label]',
-            { timeout: 7000 }
-        );
-
-        // Получаем текст безопасно через evaluate
-        const text = await dialog.evaluate(el => (el as HTMLElement).innerText);
-
-        console.log('===== POPUP DETECTED =====');
-        console.log(text);
-        console.log('=========================');
-    } catch {
-        console.log('Popup not found');
-    }
-}
-
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
@@ -225,7 +206,13 @@ async function run(headless: boolean = true) {
         // обязательно сразу после загрузки
 
 
-await logRestrictedIpPopup(page);
+page.on('load', async () => {
+    const dialog = await page.$('div[role="dialog"][aria-label]');
+    if (dialog) {
+        const text = await dialog.evaluate(el => (el as HTMLElement).innerText);
+        console.log('POPUP DETECTED:', text);
+    }
+});
 
         try {
             console.log(`\n===== ${id} =====`);
