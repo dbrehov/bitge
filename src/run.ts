@@ -313,6 +313,9 @@ async function run4(headless: boolean = true) {
 async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
+     // Ловим console сообщения из страницы
+    page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
+
     try {
         // Навигация на страницу
         await page.goto(
@@ -320,10 +323,10 @@ async function run(headless: boolean = true) {
             { waitUntil: 'networkidle' }
         );
 
-        // Ждём появления pop-up
+        // Ждём появления pop-up с ограничением по IP
         const popup = await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
-            { state: 'visible', timeout: 15000 }
+            { state: 'visible', timeout: 20000 }
         );
 
         if (!popup) {
@@ -335,25 +338,36 @@ async function run(headless: boolean = true) {
         const popupText = await popup.innerText();
         console.log('POPUP TEXT:\n', popupText);
 
-        // Ставим галку
-        const checkbox = await popup.$('input.mi-checkbox__original');
+        // --- Ставим галку (чекбокс) ---
+        await page.waitForFunction(() => {
+            const cb = document.querySelector<HTMLInputElement>('input.mi-checkbox__original');
+            return cb !== null && cb.offsetParent !== null;
+        }, { timeout: 15000 });
+
+        const checkbox = await page.$('input.mi-checkbox__original');
         if (checkbox) {
-            await checkbox.check();
+            await checkbox.check({ force: true }); // force: true на всякий случай
             console.log('Checkbox checked');
         }
 
-        // Ждём пока кнопка станет активной
-        const continueButton = await popup.waitForSelector(
-            'button.mi-button:has-text("Продолжить использовать биржу Bitget"):not([disabled])',
-            { timeout: 5000 }
+        // --- Ждём кнопку активной и кликаем ---
+        await page.waitForFunction(() => {
+            const btn = document.querySelector<HTMLButtonElement>(
+                'button.mi-button:has-text("Продолжить использовать биржу Bitget")'
+            );
+            return btn !== null && !btn.disabled && btn.offsetParent !== null;
+        }, { timeout: 15000 });
+
+        const continueButton = await page.$(
+            'button.mi-button:has-text("Продолжить использовать биржу Bitget")'
         );
         if (continueButton) {
-            await continueButton.click();
+            await continueButton.click({ force: true });
             console.log('Clicked "Продолжить использовать биржу Bitget"');
-        } else {
-            console.log('Button not clickable');
         }
 
+        // Ждём немного, чтобы страница прогрузилась после закрытия pop-up
+        await page.waitForTimeout(3000);
     await scren(page, 'Это скриншот');
 } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
