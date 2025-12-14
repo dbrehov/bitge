@@ -385,7 +385,19 @@ async function run(headless: boolean = true) {
         await scren(page, 'Это скриншот');
 } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
+const pnlIndex = lines.findIndex(line => line === 'Ордер №');
 
+            let valueLine = 'NOT_FOUND';
+            if (pnlIndex > 0) {
+                valueLine = lines[pnlIndex + 9];       
+            }
+
+            console.log(valueLine);
+            results.push(`ID: ${id} | Profit: ${valueLine}`);
+        } catch (err) {
+            console.error(`Ошибка для ${id}:`, err);
+            results.push(`ID: ${id} | ERROR`);
+        }
     } finally {
         // Браузер можно не закрывать, чтобы проверить страницу вручную
          await browser.close();
