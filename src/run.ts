@@ -186,6 +186,22 @@ await sendFileToTelegramFromMemory(
 );
 
 }
+async function logRestrictedIpPopup(page: any) {
+    try {
+        const dialog = await page.waitForSelector(
+            'div[role="dialog"][aria-label]',
+            { timeout: 7000 }
+        );
+
+        const text = await dialog.innerText();
+
+        console.log('===== POPUP DETECTED =====');
+        console.log(text);
+        console.log('=========================');
+    } catch {
+        console.log('Popup not found');
+    }
+}
 
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
@@ -205,20 +221,8 @@ async function run(headless: boolean = true) {
 
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
-await page.evaluate(() => {
-    const dialog = document.querySelector('div[role="dialog"]');
-    if (!dialog) {
-        console.log('Popup not found (evaluate)');
-        return;
-    }
 
-    console.log('===== POPUP HTML =====');
-    console.log(dialog.outerHTML);
-    console.log('===== POPUP TEXT =====');
-    console.log(dialog.innerText);
-});
-
-
+await logRestrictedIpPopup(page);
 
 
         try {
