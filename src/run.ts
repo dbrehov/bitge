@@ -189,7 +189,7 @@ await sendFileToTelegramFromMemory(
 
 
 
-async function run(headless: boolean = true) {
+async function run0(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
     const ids = fs
@@ -213,60 +213,10 @@ async function run(headless: boolean = true) {
         try {
             console.log(`\n===== ${id} =====`);
 
-    // Вешаем обработчик до перехода
-    await page.evaluate(() => {
-        const observer = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node instanceof HTMLElement && node.matches('div[role="dialog"][aria-label]')) {
-                        // Отправляем текст pop-up в console.log браузера
-                        console.log('POPUP DETECTED:', node.innerText);
-                    }
-                }
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-    });
 
-            //await page.goto(url, { waitUntil: 'networkidle' });
-    // Ловим появление pop-up
-page.on('console', msg => {
-    if (msg.text().startsWith('POPUP DETECTED:')) {
-        console.log(msg.text());
-    }
-});
 
-await page.evaluate(() => {
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                if (node instanceof HTMLElement && node.matches('div.mi-overlay > div[role="dialog"][aria-label="Ограничение по IP"]')) {
-                    console.log('POPUP DETECTED:', node.innerText);
-                }
-            }
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-});
-
-// Ждем загрузку страницы
+              //await page.goto(url, { waitUntil: 'networkidle' });
             await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
-                // После появления pop-up ставим галку и кликаем кнопку
-try {
-    // Найти чекбокс
-    const checkbox = await page.waitForSelector('input.mi-checkbox__original', { timeout: 5000 });
-    await checkbox.check(); // ставим галку
-
-    // Найти кнопку "Продолжить использовать биржу Bitget" (она активна после галки)
-    const button = await page.waitForSelector('button.mi-button:not([disabled]) >> text=Продолжить использовать биржу Bitget', { timeout: 5000 });
-    await button.click();
-
-    console.log('Popup handled: checkbox checked and button clicked');
-
-} catch {
-    console.log('Popup not found or button not clickable');
-}
-
 
 
             try {
@@ -283,7 +233,7 @@ try {
 
             } catch {
                 console.log('"Вперед" button not found or disabled');
-            }
+}
 
 
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
@@ -331,7 +281,36 @@ await sendFileToTelegramFromMemory(
 
 }
 
+async function run(headless: boolean = true) {
+    const results: string[] = [];
 
+    const { browser, page } = await launchBrowser(headless);
+
+
+    try {
+        await page.goto('https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order', { waitUntil: 'networkidle' });
+    } catch (err) {
+        console.log('Navigation error:', err);
+    }
+
+    try {
+        // Ждём, когда поп‑ап станет видимым
+        const popup = await page.waitForSelector(
+            'div.mi-overlay[style*="display: flex"] div[role="dialog"][aria-label="Ограничение по IP"]',
+            { timeout: 10000 }
+        );
+
+        // Получаем текст из pop‑up
+        const text = await popup.evaluate(el => (el as HTMLElement).innerText);
+        console.log('POPUP TEXT:\n', text);
+
+    } catch (err) {
+        console.log('Popup not found within timeout or selector mismatch');
+    } finally {
+        // Не закрываем браузер, чтобы вы могли посмотреть состояние вручную
+        // await browser.close();
+    }
+}
 
 (async () => {
 
