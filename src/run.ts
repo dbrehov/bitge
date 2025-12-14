@@ -90,42 +90,47 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
-async function handlePopupIfExists(page: any) {
+
+async function handleRestrictedIpPopup(page: any) {
     try {
-        // ждём pop-up (короткий таймаут)
-        const popup = await page.waitForSelector('div[role="dialog"]', {
-            timeout: 3000
-        });
-
-        if (!popup) return;
-
-        // 1. нажать на галочку
-        // ⚠️ селектор примерный — при необходимости подправь
-        const checkbox = await page.waitForSelector(
-            'input[type="checkbox"]',
-            { timeout: 2000 }
+        // Ждём диалог Restricted IP
+        await page.waitForSelector(
+            'div[role="dialog"][aria-label="Restricted IP"]',
+            { timeout: 5000 }
         );
 
-        if (checkbox) {
-            await checkbox.click();
-        }
+        console.log('Restricted IP popup detected');
 
-        // 2. нажать кнопку подтверждения
-        const button = await page.waitForSelector(
-            'button:has-text("Подтвердить")',
-            { timeout: 2000 }
+        // Кликаем по чекбоксу (input внутри label.mi-checkbox)
+        const checkboxSelector =
+            'label.mi-checkbox input.mi-checkbox__original';
+
+        await page.waitForSelector(checkboxSelector, { timeout: 3000 });
+        await page.click(checkboxSelector);
+
+        // Ждём, пока кнопка станет активной (disabled исчезнет)
+        const continueButtonSelector =
+            'button.mi-button--medium:has-text("Continue using Bitget Exchange")';
+
+        await page.waitForFunction(
+            (selector) => {
+                const btn = document.querySelector(selector) as HTMLButtonElement | null;
+                return btn && !btn.disabled;
+            },
+            continueButtonSelector,
+            { timeout: 5000 }
         );
 
-        if (button) {
-            await button.click();
-        }
+        // Нажимаем кнопку
+        await page.click(continueButtonSelector);
 
-        // небольшой запас
-        await page.waitForTimeout(1000);
+        // Небольшая пауза после закрытия поп-up
+        await page.waitForTimeout(1500);
 
-        console.log('Pop-up обработан');
-    } catch {
-        // pop-up не появился — это нормально
+        console.log('Restricted IP popup handled');
+    } catch (err) {
+        // Pop-up не появился — это нормально
+        console.log('Restricted IP popup not shown');
     }
 }
 
