@@ -171,11 +171,12 @@ async function run(headless: boolean = true) {
                 .map(l => l.trim())
                 .filter(Boolean);
             //console.log(lines)
-            const pnlIndex = lines.findIndex(line => line === 'USDT');
+            const pnlIndex = lines.findIndex(line => line === 'Previous');
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
                 valueLine = lines[pnlIndex + 1]+ lines[pnlIndex + 2]+ lines[pnlIndex + 3]            console.error(`Ошибка для ${id}:`, err);
+            console.error(`Ошибка для ${id}:`, err);
             results.push(`ID: ${id} | ERROR`);
         }
     }
