@@ -203,8 +203,12 @@ async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
     for (const id of ids) {
-        await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+const context = page.context();
+
+await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+    });
 });
 
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
