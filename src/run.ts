@@ -204,7 +204,8 @@ async function run(headless: boolean = true) {
 
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
-
+        // обязательно сразу после загрузки
+        await handleRestrictedIpPopup(page);
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
