@@ -307,9 +307,8 @@ async function run4(headless: boolean = true) {
     }
 }
 
-async function run(headless: boolean = false) {
-    const browser = await chromium.launch({ headless });
-    const page = await browser.newPage();
+async function run(headless: boolean = true) {
+    const { browser, page } = await launchBrowser(headless);
 
     // Слушаем console браузера, чтобы видеть сообщения из evaluate
     page.on('console', msg => {
@@ -352,6 +351,7 @@ async function run(headless: boolean = false) {
         // );
         // await walletButton.click();
         // console.log('Clicked "Перейти в Bitget Wallet"');
+        await scren(page, 'Это скриншот');
 
     } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
