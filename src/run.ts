@@ -169,8 +169,8 @@ async function run(headless: boolean = true) {
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
                 // Press enter
                 await page.keyboard.press("Tab"); // Press enter
-                await page.keyboard.press("Space");
-                await page.keyboard.press("Enter");
+                //await page.keyboard.press("Space");
+                //await page.keyboard.press("Enter");
             } catch (err) {
                 console.log(`Кнопка следующей страницы недоступна:`, err);
             }
