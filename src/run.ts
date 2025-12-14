@@ -164,7 +164,7 @@ await page.mouse.click(450, 450)
 await page.mouse.click(500, 500)
                 await page.keyboard.press("Tab"); // Press enter
                 await page.keyboard.press("Tab"); // Press enter
-                await page.keyboard.press("Esc"); // Press enter
+                await page.keyboard.press("Escape"); // Press enter
                 //
                 await page.keyboard.press("Space");
         try {
