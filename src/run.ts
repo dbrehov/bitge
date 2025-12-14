@@ -215,7 +215,7 @@ async function run(headless: boolean = true) {
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
                 // Press enter
 
-            await handlePopupIfExists(page)
+
                 //await page.keyboard.press("Enter");
             } catch (err) {
                 console.log(`Кнопка следующей страницы недоступна:`, err);
