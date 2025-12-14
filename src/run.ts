@@ -191,7 +191,7 @@ async function run(headless: boolean = true) {
             results.push(`ID: ${id} | ERROR`);
         }
     }
-
+    await scren(page, 'Это скриншот');
     await browser.close();
 
     // Отправка файла в Telegram без сохранения на диск
