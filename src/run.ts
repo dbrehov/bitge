@@ -307,42 +307,123 @@ async function run4(headless: boolean = true) {
     }
 }
 
-async function safeClickActiveEliteButton(page: Page) {
-    try {
-        // Ждём появления хотя бы одной видимой кнопки с нужным текстом
-        await page.waitForFunction(() => {
-            const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
-            return buttons.some(btn =>
-                btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
+
+async function run(headless: boolean = true) {
+    const idsFile = path.resolve('ids.txt');
+
+    const ids = fs
+        .readFileSync(idsFile, 'utf-8')
+        .split(/\r?\n/)
+        .filter(Boolean);
+
+    const results: string[] = [];
+
+    const { browser, page } = await launchBrowser(headless);
+
+    for (const id of ids) {
+        // Ловим console сообщения из страницы
+        page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
+
+        try {
+            // Навигация на страницу
+            await page.goto(
+                'https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order',
+                { waitUntil: 'networkidle' }
             );
-        }, { timeout: 15000 });
 
-        const buttons = await page.$$('button.bit-button');
-        let targetButton = null;
+            // --- Обработка pop-up ---
+            try {
+                await page.waitForSelector(
+                    'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
+                    { state: 'visible', timeout: 20000 }
+                );
 
-        for (const btn of buttons) {
-            const text = (await btn.innerText()).trim();
-            const box = await btn.boundingBox();
-            if (text === 'Активные элитные сделки' && box) {
-                targetButton = btn;
-                break;
+                console.log('Pop-up detected, using keyboard to interact');
+
+                await page.focus('body');
+
+                // Навигация через клавиши: Tab → чекбокс → Tab → кнопка
+                await page.keyboard.press('Tab');
+                await page.keyboard.press('Space'); // ставим галку
+                await page.keyboard.press('Tab');
+                await page.keyboard.press('Enter'); // нажимаем "Продолжить"
+
+                console.log('Pop-up bypassed using keyboard');
+
+                await page.waitForTimeout(3000);
+            } catch (err) {
+                console.log('Pop-up not found or keyboard handling failed:', err);
             }
+
+            // --- Клик на кнопку "Активные элитные сделки" ---
+            try {
+                await page.waitForFunction(() => {
+                    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
+                    return buttons.some(btn =>
+                        btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
+                    );
+                }, { timeout: 15000 });
+
+                const buttons = await page.$$('button.bit-button');
+                let targetButton = null;
+
+                for (const btn of buttons) {
+                    const text = (await btn.innerText()).trim();
+                    const box = await btn.boundingBox();
+                    if (text === 'Активные элитные сделки' && box) {
+                        targetButton = btn;
+                        break;
+                    }
+                }
+
+                if (!targetButton) {
+                    console.log('Target button not found');
+                } else {
+                    await targetButton.scrollIntoViewIfNeeded();
+                    await targetButton.click({ force: true });
+                    console.log('Clicked correct "Активные элитные сделки" button');
+                }
+            } catch (err) {
+                console.log('Failed to click the correct button:', err);
+            }
+
+            // --- Скриншот страницы ---
+            await scren(page, 'Это скриншот');
+
+            // --- Получение текста страницы и поиск ордера ---
+            try {
+                const pageText = await page.evaluate(() => document.body.innerText);
+
+                const lines = pageText
+                    .split('\n')
+                    .map(l => l.trim())
+                    .filter(Boolean);
+
+                const pnlIndex = lines.findIndex(line => line === 'Ордер №');
+                let valueLine = 'NOT_FOUND';
+                if (pnlIndex >= 0 && pnlIndex + 9 < lines.length) {
+                    valueLine = lines[pnlIndex + 9];
+                }
+
+                console.log(valueLine);
+                results.push(`ID: ${id} | Profit: ${valueLine}`);
+            } catch (err) {
+                console.error(`Ошибка для ${id}:`, err);
+                results.push(`ID: ${id} | ERROR`);
+            }
+
+        } catch (err) {
+            console.log('Error handling page navigation:', err);
+            results.push(`ID: ${id} | ERROR`);
         }
-
-        if (!targetButton) {
-            console.log('Target button not found');
-            return;
-        }
-
-        await targetButton.scrollIntoViewIfNeeded();
-        await targetButton.click({ force: true });
-        console.log('Clicked correct "Активные элитные сделки" button');
-
-    } catch (err) {
-        console.log('Failed to click the correct button:', err);
     }
-}
-   
+
+    // Закрываем браузер
+    await browser.close();
+
+    // Можно вернуть результаты
+    return results;
+}   
 
 (async () => {
 
