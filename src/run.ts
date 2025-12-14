@@ -90,24 +90,8 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
-async function handleCookieIfExists(page: any) {
+async function forceCloseRestrictedIp(page: any) {
     try {
-        await page.waitForSelector(
-            'button:has-text("Принять все файлы cookie")',
-            { timeout: 3000 }
-        );
-        await page.click('button:has-text("Принять все файлы cookie")');
-        await page.waitForTimeout(500);
-        console.log('Cookie accepted');
-    } catch {
-        // cookie не показан
-    }
-}
-
-
-async function handleRestrictedIpPopup(page: any) {
-    try {
-        // Ждём сам диалог
         await page.waitForSelector(
             'div[role="dialog"][aria-label="Restricted IP"]',
             { timeout: 5000 }
@@ -115,33 +99,41 @@ async function handleRestrictedIpPopup(page: any) {
 
         console.log('Restricted IP popup detected');
 
-        // 1. Кликаем по LABEL чекбокса (а не input)
-        const checkboxLabel =
-            'label.mi-checkbox';
+        await page.evaluate(() => {
+            // 1. включаем чекбокс
+            const input = document.querySelector(
+                'label.mi-checkbox input'
+            ) as HTMLInputElement;
 
-        await page.waitForSelector(checkboxLabel, { timeout: 3000 });
-        await page.click(checkboxLabel, { force: true });
+            if (input) {
+                input.checked = true;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
 
-        // 2. Ждём, пока кнопка станет активной
-        const continueBtn =
-            'button:has-text("Продолжить использовать биржу Bitget")';
+            // 2. находим кнопку "Продолжить"
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const continueBtn = buttons.find(b =>
+                b.textContent?.includes('Продолжить использовать')
+            ) as HTMLButtonElement | undefined;
 
-        await page.waitForFunction(() => {
-            const btn = [...document.querySelectorAll('button')]
-                .find(b => b.textContent?.includes('Продолжить использовать'));
-            return btn && !btn.hasAttribute('disabled');
-        }, { timeout: 5000 });
+            if (continueBtn) {
+                continueBtn.removeAttribute('disabled');
+                continueBtn.classList.remove('is-disabled');
+                continueBtn.click();
+            }
 
-        // 3. Кликаем кнопку
-        await page.click(continueBtn, { force: true });
+            // 3. на всякий случай убираем overlay
+            const overlay = document.querySelector('.mi-overlay');
+            if (overlay) overlay.remove();
+        });
 
         await page.waitForTimeout(1500);
-        console.log('Restricted IP popup handled');
-    } catch (err) {
+        console.log('Restricted IP popup forcibly closed');
+    } catch (e) {
         console.log('Restricted IP popup not shown');
     }
 }
-
 
 async function run1(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
@@ -213,11 +205,9 @@ async function run(headless: boolean = true) {
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
-// 1. cookie
-await handleCookieIfExists(page);
 
-// 2. restricted IP
-await handleRestrictedIpPopup(page);
+        await forceCloseRestrictedIp(page);
+
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
