@@ -349,6 +349,7 @@ async function run(headless: boolean = true) {
         await page.waitForTimeout(3000);   
     const buttonSelector = 'button.bit-button';
 
+        await scren(page, 'Это скриншот');
     try {
         // Ждём, пока кнопка появится и будет видимой с нужным текстом
         await page.waitForFunction(
@@ -373,11 +374,13 @@ async function run(headless: boolean = true) {
             return;
         }
 
+        await scren(page, 'Это скриншот');
         // Скроллим и кликаем
         await targetButton.scrollIntoViewIfNeeded();
         await targetButton.click({ force: true });
         console.log('Clicked "Активные элитные сделки" safely');
 
+        await scren(page, 'Это скриншот');
     } catch (err) {
         console.log('Failed to click the button safely:', err);
     }
