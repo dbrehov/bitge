@@ -203,31 +203,20 @@ async function run(headless: boolean = true) {
 
 
 
-const context = page.context();
-
-await context.addInitScript(() => {
-    // 1. убираем overlay если уже есть
-    const killOverlay = () => {
-        document.querySelectorAll('.mi-overlay').forEach(el => el.remove());
-        document.body.style.pointerEvents = 'auto';
-        document.documentElement.style.pointerEvents = 'auto';
-    };
-
-    // 2. наблюдаем за DOM
-    const observer = new MutationObserver(() => {
-        killOverlay();
-    });
-
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-    });
-
-    // 3. на всякий случай — периодически
-    setInterval(killOverlay, 300);
-});
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
+await page.evaluate(() => {
+    const dialog = document.querySelector('div[role="dialog"]');
+    if (!dialog) {
+        console.log('Popup not found (evaluate)');
+        return;
+    }
+
+    console.log('===== POPUP HTML =====');
+    console.log(dialog.outerHTML);
+    console.log('===== POPUP TEXT =====');
+    console.log(dialog.innerText);
+});
 
 
 
