@@ -202,33 +202,29 @@ async function run(headless: boolean = true) {
     for (const id of ids) {
 
 
+
 const context = page.context();
 
 await context.addInitScript(() => {
-    try {
-        // основной флаг подтверждения
-        localStorage.setItem(
-            'MI_RESTRICTED_IP_CONFIRMED',
-            'true'
-        );
+    // 1. убираем overlay если уже есть
+    const killOverlay = () => {
+        document.querySelectorAll('.mi-overlay').forEach(el => el.remove());
+        document.body.style.pointerEvents = 'auto';
+        document.documentElement.style.pointerEvents = 'auto';
+    };
 
-        // резервные ключи (Bitget меняет имена)
-        localStorage.setItem(
-            'restricted_ip_confirmed',
-            'true'
-        );
+    // 2. наблюдаем за DOM
+    const observer = new MutationObserver(() => {
+        killOverlay();
+    });
 
-        localStorage.setItem(
-            'bitget_restricted_ip',
-            'true'
-        );
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+    });
 
-        // иногда проверяют страну
-        localStorage.setItem(
-            'country',
-            'RU'
-        );
-    } catch (e) {}
+    // 3. на всякий случай — периодически
+    setInterval(killOverlay, 300);
 });
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
