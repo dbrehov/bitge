@@ -325,11 +325,8 @@ async function run(headless: boolean = true) {
         page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
         try {
-            // Навигация на страницу
-            await page.goto(
-                'https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order',
-                { waitUntil: 'networkidle' }
-            );
+            console.log(`\n===== ${id} =====`);
+            await page.goto(url, { waitUntil: 'networkidle' });
 
             // --- Обработка pop-up ---
             try {
