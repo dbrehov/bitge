@@ -281,33 +281,28 @@ await sendFileToTelegramFromMemory(
 
 }
 
-async function run(headless: boolean = true) {
-    const results: string[] = [];
 
+async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
-
     try {
-        await page.goto('https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order', { waitUntil: 'networkidle' });
-    } catch (err) {
-        console.log('Navigation error:', err);
-    }
-
-    try {
-        // Ждём, когда поп‑ап станет видимым
-        const popup = await page.waitForSelector(
-            'div.mi-overlay[style*="display: flex"] div[role="dialog"][aria-label="Ограничение по IP"]',
-            { timeout: 10000 }
+        await page.goto(
+            'https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order',
+            { waitUntil: 'networkidle' }
         );
 
-        // Получаем текст из pop‑up
+        // Ждём pop-up "Ограничение по IP"
+        const popup = await page.waitForSelector(
+            'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
+            { timeout: 15000, state: 'visible' }
+        );
+
         const text = await popup.evaluate(el => (el as HTMLElement).innerText);
         console.log('POPUP TEXT:\n', text);
 
     } catch (err) {
         console.log('Popup not found within timeout or selector mismatch');
     } finally {
-        // Не закрываем браузер, чтобы вы могли посмотреть состояние вручную
         // await browser.close();
     }
 }
