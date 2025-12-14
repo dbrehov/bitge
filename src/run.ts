@@ -388,7 +388,7 @@ async function run(headless: boolean = true) {
 
     } finally {
         // Браузер можно не закрывать, чтобы проверить страницу вручную
-        // await browser.close();
+         await browser.close();
     }
 }
 
