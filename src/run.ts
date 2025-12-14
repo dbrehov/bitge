@@ -347,34 +347,41 @@ async function run(headless: boolean = true) {
 
         // Ждём немного, чтобы страница успела обновиться
         await page.waitForTimeout(3000);   
-           const buttonSelector = 'button.bit-button:has-text("Активные элитные сделки")';
+    const buttonSelector = 'button.bit-button';
 
     try {
-        // Ждём, пока кнопка появится и станет видимой
+        // Ждём, пока кнопка появится и будет видимой с нужным текстом
         await page.waitForFunction(
             (selector) => {
-                const btn = document.querySelector<HTMLButtonElement>(selector);
-                return btn !== null && !btn.disabled && btn.offsetParent !== null;
+                const btns = Array.from(document.querySelectorAll<HTMLButtonElement>(selector));
+                const btn = btns.find(b => b.innerText.includes('Активные элитные сделки'));
+                return btn !== undefined && !btn.disabled && btn.offsetParent !== null;
             },
             buttonSelector,
             { timeout: 15000 }
         );
 
-        const button = await page.$(buttonSelector);
-        if (!button) {
+        // Берём саму кнопку
+        const buttons = await page.$$(buttonSelector);
+        const targetButton = buttons.find(async b => {
+            const text = await b.innerText();
+            return text.includes('Активные элитные сделки');
+        });
+
+        if (!targetButton) {
             console.log('Button not found');
             return;
         }
 
-        // Скроллим в видимую область
-        await button.scrollIntoViewIfNeeded();
-
-        // Кликаем с force на всякий случай
-        await button.click({ force: true });
+        // Скроллим и кликаем
+        await targetButton.scrollIntoViewIfNeeded();
+        await targetButton.click({ force: true });
         console.log('Clicked "Активные элитные сделки" safely');
+
     } catch (err) {
         console.log('Failed to click the button safely:', err);
-    }        await scren(page, 'Это скриншот');
+    }
+        await scren(page, 'Это скриншот');
 } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
 
