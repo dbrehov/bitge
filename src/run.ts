@@ -186,6 +186,7 @@ await sendFileToTelegramFromMemory(
 );
 
 }
+
 async function logRestrictedIpPopup(page: any) {
     try {
         const dialog = await page.waitForSelector(
@@ -193,7 +194,8 @@ async function logRestrictedIpPopup(page: any) {
             { timeout: 7000 }
         );
 
-        const text = await dialog.innerText();
+        // Получаем текст безопасно через evaluate
+        const text = await dialog.evaluate(el => (el as HTMLElement).innerText);
 
         console.log('===== POPUP DETECTED =====');
         console.log(text);
@@ -222,8 +224,8 @@ async function run(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
 
-await logRestrictedIpPopup(page);
 
+await logRestrictedIpPopup(page);
 
         try {
             console.log(`\n===== ${id} =====`);
