@@ -208,24 +208,28 @@ async function run(headless: boolean = true) {
 
 
 
-// TypeScript / Playwright
-await page.evaluate(() => {
-    // Создаем наблюдатель за DOM
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                // Проверяем, что добавленный узел — элемент и соответствует селектору диалога
-                if (node instanceof HTMLElement && node.matches('div[role="dialog"][aria-label]')) {
-                    console.log('POPUP DETECTED:', node.innerText);
+            try {
+    // Вешаем обработчик до перехода
+    await page.evaluate(() => {
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node instanceof HTMLElement && node.matches('div[role="dialog"][aria-label]')) {
+                        // Отправляем текст pop-up в console.log браузера
+                        console.log('POPUP DETECTED:', node.innerText);
+                    }
                 }
             }
-        }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
     });
 
-    // Запускаем наблюдатель за всем телом документа
-    observer.observe(document.body, { childList: true, subtree: true });
-});
-        try {
+    // Переходим на страницу
+    await page.goto('https://example.com', { waitUntil: 'domcontentloaded' });
+
+} catch (err) {
+    console.log('Navigation error:', err);
+}
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
             try {
