@@ -206,13 +206,12 @@ async function run(headless: boolean = true) {
         // обязательно сразу после загрузки
 
 
-page.on('load', async () => {
-    const dialog = await page.$('div[role="dialog"][aria-label]');
-    if (dialog) {
-        const text = await dialog.evaluate(el => (el as HTMLElement).innerText);
-        console.log('POPUP DETECTED:', text);
-    }
+
+page.on('dialog', async dialog => {
+    console.log('POPUP DETECTED:', dialog.message());
+    await dialog.dismiss(); // или dialog.accept()
 });
+
 
         try {
             console.log(`\n===== ${id} =====`);
