@@ -202,9 +202,37 @@ async function run(headless: boolean = true) {
     for (const id of ids) {
 
 
+const context = page.context();
+
+await context.addInitScript(() => {
+    try {
+        // основной флаг подтверждения
+        localStorage.setItem(
+            'MI_RESTRICTED_IP_CONFIRMED',
+            'true'
+        );
+
+        // резервные ключи (Bitget меняет имена)
+        localStorage.setItem(
+            'restricted_ip_confirmed',
+            'true'
+        );
+
+        localStorage.setItem(
+            'bitget_restricted_ip',
+            'true'
+        );
+
+        // иногда проверяют страну
+        localStorage.setItem(
+            'country',
+            'RU'
+        );
+    } catch (e) {}
+});
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
-    await closeRestrictedIpByKeyboard(page);
+
 
 
 
