@@ -160,6 +160,9 @@ async function run(headless: boolean = true) {
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
 
+                await page.keyboard.press("Tab"); // Press enter
+                await page.keyboard.press("Tab"); // Press enter
+                await page.keyboard.press("Tab"); // Press enter
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
