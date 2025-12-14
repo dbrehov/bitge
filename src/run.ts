@@ -164,13 +164,11 @@ async function run(headless: boolean = true) {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
             try {
-                const nextBtn = await page.waitForSelector('button.bit-button is-round !text-content-tertiary]', { timeout: 5000 });
-                await nextBtn.click();
+                await page.locator('button.bit-button is-round \\!text-content-tertiary').click();
+                await page.waitForSelector('body');
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
-                await page.reload({ waitUntil: 'networkidle' }); // перезагрузка страницы
-                await new Promise(resolve => setTimeout(resolve, 2000));
             } catch (err) {
-                console.log(`Кнопка следующей страницы недоступна или ошибка для ID ${id}:`, err);
+                console.log(`Кнопка следующей страницы недоступна:`, err);
             }
             const pageText = await page.evaluate(() => document.body.innerText);
 
