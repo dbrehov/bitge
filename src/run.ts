@@ -347,9 +347,35 @@ async function run(headless: boolean = true) {
 
         // Ждём немного, чтобы страница успела обновиться
         await page.waitForTimeout(3000);   
+            try {
+                try {
+                    // Ждём кнопку "Вперед" в DOM (можно задать короткий timeout)
+                    const nextButton = await page.waitForSelector(
+                        'li.bit-pagination-next[aria-disabled="false"] > button.bit-pagination-item-link',
+                        { timeout: 3000 } // короткий таймаут, чтобы не тормозить
+                     );
+
+                    // Нажимаем кнопку
+                await nextButton.click();
+                console.log('Clicked "Вперед" button');
+
+            } catch {
+                console.log('"Вперед" button not found or disabled');
+}
+
+
+                await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
+                // Press enter
+
+
+                //await page.keyboard.press("Enter");
+            } catch (err) {
+                console.log(`Кнопка следующей страницы недоступна:`, err);
+            }
         await scren(page, 'Это скриншот');
 } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
+
     } finally {
         // Браузер можно не закрывать, чтобы проверить страницу вручную
         // await browser.close();
