@@ -215,8 +215,8 @@ async function run0(headless: boolean = true) {
 
 
 
-              //await page.goto(url, { waitUntil: 'networkidle' });
-            await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
+            await page.goto(url, { waitUntil: 'networkidle' });
+            //await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
 
 
             try {
@@ -342,90 +342,7 @@ async function safeClickActiveEliteButton(page: Page) {
         console.log('Failed to click the correct button:', err);
     }
 }
-
-export async function run(headless: boolean = true) {
-    const idsFile = path.resolve('ids.txt');
-
-    const ids = fs
-        .readFileSync(idsFile, 'utf-8')
-        .split(/\r?\n/)
-        .filter(Boolean);
-
-    const results: string[] = [];
-
-    const { browser, page } = await launchBrowser(headless);
-
-    for (const id of ids) {
-        page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-
-        try {
-            // Навигация на страницу
-            await page.goto(
-                'https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order',
-                { waitUntil: 'networkidle' }
-            );
-
-            // Обрабатываем pop-up через клавиатуру
-            try {
-                await page.waitForSelector(
-                    'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
-                    { state: 'visible', timeout: 20000 }
-                );
-
-                console.log('Pop-up detected, using keyboard to interact');
-
-                await page.focus('body');
-                await page.keyboard.press('Tab');
-                await page.keyboard.press('Space');
-                await page.keyboard.press('Tab');
-                await page.keyboard.press('Enter');
-
-                console.log('Pop-up bypassed using keyboard');
-                await page.waitForTimeout(3000);
-            } catch (err) {
-                console.log('Pop-up not found or keyboard handling failed:', err);
-            }
-
-            // Безопасный клик на кнопку "Активные элитные сделки"
-            await safeClickActiveEliteButton(page);
-
-            // Скриншот
-            await scren(page, 'Это скриншот');
-
-            // Получаем текст страницы и обрабатываем ордер
-            try {
-                const pageText = await page.evaluate(() => document.body.innerText);
-
-                const lines = pageText
-                    .split('\n')
-                    .map(l => l.trim())
-                    .filter(Boolean);
-
-                const pnlIndex = lines.findIndex(line => line === 'Ордер №');
-                let valueLine = 'NOT_FOUND';
-                if (pnlIndex >= 0 && pnlIndex + 9 < lines.length) {
-                    valueLine = lines[pnlIndex + 9];
-                }
-
-                console.log(valueLine);
-                results.push(`ID: ${id} | Profit: ${valueLine}`);
-            } catch (err) {
-                console.error(`Ошибка для ${id}:`, err);
-                results.push(`ID: ${id} | ERROR`);
-            }
-
-        } catch (err) {
-            console.log('Error handling page navigation:', err);
-            results.push(`ID: ${id} | ERROR`);
-        }
-    }
-
-    // Закрываем браузер
-    await browser.close();
-
-    // Можно вернуть результаты
-    return results;
-}
+   
 
 (async () => {
 
