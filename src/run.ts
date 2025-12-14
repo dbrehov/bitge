@@ -90,50 +90,47 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
-async function forceCloseRestrictedIp(page: any) {
+async function closeRestrictedIpByKeyboard(page: any) {
     try {
+        // Ждём появления диалога
         await page.waitForSelector(
-            'div[role="dialog"][aria-label="Restricted IP"]',
+            'div[role="dialog"][aria-label]',
             { timeout: 5000 }
         );
 
-        console.log('Restricted IP popup detected');
+        console.log('Restricted IP popup detected (keyboard mode)');
 
-        await page.evaluate(() => {
-            // 1. включаем чекбокс
-            const input = document.querySelector(
-                'label.mi-checkbox input'
-            ) as HTMLInputElement;
+        // Даём странице установить фокус
+        await page.waitForTimeout(500);
 
-            if (input) {
-                input.checked = true;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+        // Последовательность TAB до чекбокса и кнопки
+        // Обычно хватает 3–6 TAB, но делаем с запасом
+        for (let i = 0; i < 6; i++) {
+            await page.keyboard.press('Tab');
+            await page.waitForTimeout(150);
+        }
 
-            // 2. находим кнопку "Продолжить"
-            const buttons = Array.from(document.querySelectorAll('button'));
-            const continueBtn = buttons.find(b =>
-                b.textContent?.includes('Продолжить использовать')
-            ) as HTMLButtonElement | undefined;
+        // SPACE — отметить чекбокс
+        await page.keyboard.press('Space');
+        await page.waitForTimeout(300);
 
-            if (continueBtn) {
-                continueBtn.removeAttribute('disabled');
-                continueBtn.classList.remove('is-disabled');
-                continueBtn.click();
-            }
+        // ещё TAB до кнопки "Continue"
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press('Tab');
+            await page.waitForTimeout(150);
+        }
 
-            // 3. на всякий случай убираем overlay
-            const overlay = document.querySelector('.mi-overlay');
-            if (overlay) overlay.remove();
-        });
+        // ENTER — подтвердить
+        await page.keyboard.press('Enter');
 
         await page.waitForTimeout(1500);
-        console.log('Restricted IP popup forcibly closed');
+        console.log('Restricted IP popup closed via keyboard');
     } catch (e) {
         console.log('Restricted IP popup not shown');
     }
 }
+
+
 
 async function run1(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
@@ -203,18 +200,13 @@ async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
     for (const id of ids) {
-const context = page.context();
 
-await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined,
-    });
-});
 
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
+    await closeRestrictedIpByKeyboard(page);
 
-        await forceCloseRestrictedIp(page);
+
 
         try {
             console.log(`\n===== ${id} =====`);
