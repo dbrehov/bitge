@@ -207,12 +207,24 @@ async function run(headless: boolean = true) {
 
 
 
-page.on('dialog', async dialog => {
-    console.log('POPUP DETECTED:', dialog.message());
-    await dialog.dismiss(); // или dialog.accept()
+
+// TypeScript / Playwright
+await page.evaluate(() => {
+    // Создаем наблюдатель за DOM
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                // Проверяем, что добавленный узел — элемент и соответствует селектору диалога
+                if (node instanceof HTMLElement && node.matches('div[role="dialog"][aria-label]')) {
+                    console.log('POPUP DETECTED:', node.innerText);
+                }
+            }
+        }
+    });
+
+    // Запускаем наблюдатель за всем телом документа
+    observer.observe(document.body, { childList: true, subtree: true });
 });
-
-
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
