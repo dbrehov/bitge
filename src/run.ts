@@ -187,9 +187,39 @@ await sendFileToTelegramFromMemory(
 
 }
 
+// Функция для обхода pop-up через клавиатуру
+async function handleIpPopupWithKeyboard(page: Page) {
+    try {
+        // Ждём появления pop-up
+        const popup = await page.waitForSelector(
+            'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
+            { state: 'visible', timeout: 20000 }
+        );
 
+        if (!popup) {
+            console.log('Pop-up not found');
+            return;
+        }
 
-async function run0(headless: boolean = true) {
+        console.log('Pop-up detected, using keyboard to interact');
+
+        // Фокус на странице
+        await page.focus('body');
+
+        // Навигация через клавиши
+        await page.keyboard.press('Tab');    // фокус на чекбокс
+        await page.keyboard.press('Space');  // отмечаем галку
+        await page.keyboard.press('Tab');    // фокус на кнопку
+        await page.keyboard.press('Enter');  // нажимаем кнопку
+
+        console.log('Pop-up bypassed using keyboard');
+        await page.waitForTimeout(2000);     // даём SPA время обработать клик
+    } catch (err) {
+        console.log('Pop-up not found or keyboard handling failed:', err);
+    }
+}
+
+async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
     const ids = fs
@@ -200,6 +230,7 @@ async function run0(headless: boolean = true) {
     const results: string[] = [];
 
     const { browser, page } = await launchBrowser(headless);
+    page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
     for (const id of ids) {
 
@@ -208,15 +239,16 @@ async function run0(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
         // обязательно сразу после загрузки
 
-
+        // Попытка обработать pop-up через отдельную функцию
+        await handleIpPopupWithKeyboard(page);
 
         try {
             console.log(`\n===== ${id} =====`);
 
 
 
-              //await page.goto(url, { waitUntil: 'networkidle' });
-            await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
+              await page.goto(url, { waitUntil: 'networkidle' });
+            //await page.goto("https://www.bitget.com/ru/copy-trading/trader/b0b34f758dbb3d52a091/futures-order", { waitUntil: 'networkidle' });
 
 
             try {
@@ -310,7 +342,7 @@ async function run4(headless: boolean = true) {
 
 
 
-async function run(headless: boolean = true) {
+async function run3(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
         // Ловим console сообщения из страницы
