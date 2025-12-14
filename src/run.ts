@@ -420,8 +420,16 @@ async function run(headless: boolean = true) {
     // Закрываем браузер
     await browser.close();
 
-    // Можно вернуть результаты
-    return results;
+
+    // Отправка файла в Telegram без сохранения на диск
+    // после сбора всех results
+    const fileContent = results.join('\n');
+
+    await sendFileToTelegramFromMemory(
+        fileContent,
+        'copy_trading_result.txt',
+        `Результаты копитрейдинга (${results.length})`
+    );
 }   
 
 (async () => {
