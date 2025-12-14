@@ -321,6 +321,8 @@ async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
     for (const id of ids) {
+        const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures`;
+
         // Ловим console сообщения из страницы
         page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
