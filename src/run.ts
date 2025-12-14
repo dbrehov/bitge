@@ -171,7 +171,7 @@ async function run(headless: boolean = true) {
                 .map(l => l.trim())
                 .filter(Boolean);
             //console.log(lines)
-            const pnlIndex = lines.findIndex(line => line === 'Ордер №')[1];
+            const pnlIndex = lines.findIndex(line => line === 'Ордер №');
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
