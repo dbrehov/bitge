@@ -170,8 +170,8 @@ async function run(headless: boolean = true) {
                 .split('\n')
                 .map(l => l.trim())
                 .filter(Boolean);
-
-            const pnlIndex = lines.findIndex(line => line === 'PnL');
+            console.log(lines)
+            const pnlIndex = lines.findIndex(line => line === 'Previous');
 
             let valueLine = 'NOT_FOUND';
             if (pnlIndex > 0) {
