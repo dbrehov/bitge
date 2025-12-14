@@ -90,6 +90,46 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
+async function handlePopupIfExists(page: any) {
+    try {
+        // ждём pop-up (короткий таймаут)
+        const popup = await page.waitForSelector('div[role="dialog"]', {
+            timeout: 3000
+        });
+
+        if (!popup) return;
+
+        // 1. нажать на галочку
+        // ⚠️ селектор примерный — при необходимости подправь
+        const checkbox = await page.waitForSelector(
+            'input[type="checkbox"]',
+            { timeout: 2000 }
+        );
+
+        if (checkbox) {
+            await checkbox.click();
+        }
+
+        // 2. нажать кнопку подтверждения
+        const button = await page.waitForSelector(
+            'button:has-text("Подтвердить")',
+            { timeout: 2000 }
+        );
+
+        if (button) {
+            await button.click();
+        }
+
+        // небольшой запас
+        await page.waitForTimeout(1000);
+
+        console.log('Pop-up обработан');
+    } catch {
+        // pop-up не появился — это нормально
+    }
+}
+
+
 async function run1(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
@@ -159,14 +199,7 @@ async function run(headless: boolean = true) {
 
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
-await page.mouse.click(400, 400)
-await page.mouse.click(450, 450)
-await page.mouse.click(500, 500)
-                await page.keyboard.press("Tab"); // Press enter
-                await page.keyboard.press("Tab"); // Press enter
-                await page.keyboard.press("Escape"); // Press enter
-                //
-                await page.keyboard.press("Space");
+
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
@@ -175,7 +208,8 @@ await page.mouse.click(500, 500)
 
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
                 // Press enter
-                await page.keyboard.press("Tab"); // Press enter
+
+            await handlePopupIfExists(page)
                 //await page.keyboard.press("Enter");
             } catch (err) {
                 console.log(`Кнопка следующей страницы недоступна:`, err);
