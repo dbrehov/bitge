@@ -307,13 +307,11 @@ async function run4(headless: boolean = true) {
     }
 }
 
+
+
+
 async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
-
-    // Слушаем console браузера, чтобы видеть сообщения из evaluate
-    page.on('console', msg => {
-        console.log('BROWSER LOG:', msg.text());
-    });
 
     try {
         // Навигация на страницу
@@ -322,38 +320,42 @@ async function run(headless: boolean = true) {
             { waitUntil: 'networkidle' }
         );
 
-        // Ждём появления pop-up с ограничением по IP
+        // Ждём появления pop-up
         const popup = await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
-            { timeout: 15000, state: 'visible' }
+            { state: 'visible', timeout: 15000 }
         );
 
-        // Выводим текст pop-up
-        const popupText = await popup.evaluate(el => (el as HTMLElement).innerText);
+        if (!popup) {
+            console.log('Popup not found');
+            return;
+        }
+
+        // Получаем текст pop-up
+        const popupText = await popup.innerText();
         console.log('POPUP TEXT:\n', popupText);
 
-        // Ставим галку в чекбоксе
-        const checkbox = await page.waitForSelector('input.mi-checkbox__original', { timeout: 5000 });
-        await checkbox.check(); // отмечаем галку
+        // Ставим галку
+        const checkbox = await popup.$('input.mi-checkbox__original');
+        if (checkbox) {
+            await checkbox.check();
+            console.log('Checkbox checked');
+        }
 
-        // Ждём, когда кнопка "Продолжить использовать биржу Bitget" станет активной
-        const continueButton = await page.waitForSelector(
-            'div.mi-dialog__footer button.mi-button:has-text("Продолжить использовать биржу Bitget"):not([disabled])',
+        // Ждём пока кнопка станет активной
+        const continueButton = await popup.waitForSelector(
+            'button.mi-button:has-text("Продолжить использовать биржу Bitget"):not([disabled])',
             { timeout: 5000 }
         );
-        await continueButton.click();
-        console.log('Clicked "Продолжить использовать биржу Bitget"');
+        if (continueButton) {
+            await continueButton.click();
+            console.log('Clicked "Продолжить использовать биржу Bitget"');
+        } else {
+            console.log('Button not clickable');
+        }
 
-        // При необходимости можно аналогично нажать вторую кнопку
-        // const walletButton = await page.waitForSelector(
-        //     'div.mi-dialog__footer button.mi-button:has-text("Перейти в Bitget Wallet"):not([disabled])',
-        //     { timeout: 5000 }
-        // );
-        // await walletButton.click();
-        // console.log('Clicked "Перейти в Bitget Wallet"');
-        await scren(page, 'Это скриншот');
-
-    } catch (err) {
+    await scren(page, 'Это скриншот');
+} catch (err) {
         console.log('Error handling pop-up or navigation:', err);
     } finally {
         // Браузер можно не закрывать, чтобы проверить страницу вручную
