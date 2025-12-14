@@ -159,10 +159,14 @@ async function run(headless: boolean = true) {
 
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
-
+await page.mouse.click(400, 400)
+await page.mouse.click(450, 450)
+await page.mouse.click(500, 500)
                 await page.keyboard.press("Tab"); // Press enter
                 await page.keyboard.press("Tab"); // Press enter
                 await page.keyboard.press("Tab"); // Press enter
+                //
+                await page.keyboard.press("Space");
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
@@ -172,7 +176,6 @@ async function run(headless: boolean = true) {
                 await new Promise(resolve => setTimeout(resolve, 5000)); // задержка после клика
                 // Press enter
                 await page.keyboard.press("Tab"); // Press enter
-                //await page.keyboard.press("Space");
                 //await page.keyboard.press("Enter");
             } catch (err) {
                 console.log(`Кнопка следующей страницы недоступна:`, err);
