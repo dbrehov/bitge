@@ -313,7 +313,7 @@ async function run4(headless: boolean = true) {
 async function run(headless: boolean = true) {
     const { browser, page } = await launchBrowser(headless);
 
-     // Ловим console сообщения из страницы
+        // Ловим console сообщения из страницы
     page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
     try {
@@ -323,52 +323,31 @@ async function run(headless: boolean = true) {
             { waitUntil: 'networkidle' }
         );
 
-        // Ждём появления pop-up с ограничением по IP
-        const popup = await page.waitForSelector(
+        // Ждём появления pop-up
+        await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
             { state: 'visible', timeout: 20000 }
         );
 
-        if (!popup) {
-            console.log('Popup not found');
-            return;
-        }
+        console.log('Pop-up detected, using keyboard to interact');
 
-        // Получаем текст pop-up
-        const popupText = await popup.innerText();
-        console.log('POPUP TEXT:\n', popupText);
+        // Фокус на странице или на pop-up
+        await page.focus('body');
 
-        // --- Ставим галку (чекбокс) ---
-        await page.waitForFunction(() => {
-            const cb = document.querySelector<HTMLInputElement>('input.mi-checkbox__original');
-            return cb !== null && cb.offsetParent !== null;
-        }, { timeout: 15000 });
+        // --- Навигация через клавиши ---
+        // Tab → чекбокс
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Space'); // ставим галку
 
-        const checkbox = await page.$('input.mi-checkbox__original');
-        if (checkbox) {
-            await checkbox.check({ force: true }); // force: true на всякий случай
-            console.log('Checkbox checked');
-        }
+        // Tab → кнопка
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Enter'); // нажимаем "Продолжить"
 
-        // --- Ждём кнопку активной и кликаем ---
-        await page.waitForFunction(() => {
-            const btn = document.querySelector<HTMLButtonElement>(
-                'button.mi-button:has-text("Продолжить использовать биржу Bitget")'
-            );
-            return btn !== null && !btn.disabled && btn.offsetParent !== null;
-        }, { timeout: 15000 });
+        console.log('Pop-up bypassed using keyboard');
 
-        const continueButton = await page.$(
-            'button.mi-button:has-text("Продолжить использовать биржу Bitget")'
-        );
-        if (continueButton) {
-            await continueButton.click({ force: true });
-            console.log('Clicked "Продолжить использовать биржу Bitget"');
-        }
-
-        // Ждём немного, чтобы страница прогрузилась после закрытия pop-up
-        await page.waitForTimeout(3000);
-    await scren(page, 'Это скриншот');
+        // Ждём немного, чтобы страница успела обновиться
+        await page.waitForTimeout(3000);   
+        await scren(page, 'Это скриншот');
 } catch (err) {
         console.log('Error handling pop-up or navigation:', err);
     } finally {
