@@ -468,7 +468,7 @@ try {
     //await run(4, false);
     //await run('BNB', 24, false);
 
-    await run(null, 48, false);
+    await run(null, 200, false);
     //await run(false);
     //await run();
 
