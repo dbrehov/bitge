@@ -401,7 +401,7 @@ async function run(headless: boolean = true) {
                 const pnlIndex = lines.findIndex(line => line === 'Ордер №');
                 let valueLine = 'NOT_FOUND';
                 if (pnlIndex > 0) {
-                    valueLine = lines[pnlIndex] + 4;       
+                    valueLine = lines[pnlIndex] + 5;       
                 }
 
                 console.log(valueLine);
