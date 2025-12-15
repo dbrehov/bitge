@@ -400,15 +400,16 @@ const endIndex = lines.findIndex(line => line === 'О Bitget');
 let valueLine = 'NOT_FOUND';
 
 if (startIndex >= 0) {
+    const sliceStart = startIndex + 1;
+    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+
     valueLine = lines
-        .slice(
-            startIndex,
-            endIndex > startIndex ? endIndex : lines.length
-        )
-        .join('\n');
+        .slice(sliceStart, sliceEnd)
+        .join(' ');
 }
 
 console.log(valueLine);
+
 
                 results.push(`ID: ${id} | Profit: ${valueLine}`);
             } catch (err) {
