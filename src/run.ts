@@ -393,31 +393,36 @@ async function run(headless: boolean = true) {
                     .map(l => l.trim())
                     .filter(Boolean);
 
+                const startIndex = lines.findIndex(line => line === 'Ордер №');
+                const endIndex = lines.findIndex(line => line === 'О Bitget');
 
+                let orderLines: string[] = [];
 
+                if (startIndex >= 0) {
+                    const sliceStart = startIndex + 1; // после "Ордер №"
+                    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-const startIndex = lines.findIndex(line => line === 'Ордер №');
-const endIndex = lines.findIndex(line => line === 'О Bitget');
+                    orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
 
-if (startIndex >= 0) {
-    const sliceStart = startIndex + 1; // после "Ордер №"
-    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+                    // Отправляем каждую строку в Telegram
+                    for (const line of orderLines) {
+                        await sendToTelegram(line);
+                    }
+                }
 
-    const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+                // Сохраняем результат для файла
+                if (orderLines.length > 0) {
+                    const orderText = orderLines.join(' '); // склеиваем в одну строку для файла
+                    results.push(`ID: ${id} | Profit: ${orderText}`);
+                } else {
+                    results.push(`ID: ${id} | NOT_FOUND`);
+                }
+            } catch (err) {
+                console.error(`Ошибка парсинга для ${id}:`, err);
+                results.push(`ID: ${id} | ERROR`);
+            }
 
-      // Отправляем каждую строку в Telegram
-    for (const line of orderLines) {
-        await sendToTelegram(line);
-    }
-}
-
-// Сохраняем результат для файла
-if (orderLines.length > 0) {
-    const orderText = orderLines.join(' '); // склеиваем в одну строку для файла
-    results.push(`ID: ${id} | Profit: ${orderText}`);
-} else {
-    results.push(`ID: ${id} | NOT_FOUND`);
-}        } catch (err) {
+        } catch (err) {
             console.log('Error handling page navigation:', err);
             results.push(`ID: ${id} | ERROR`);
         }
