@@ -307,7 +307,6 @@ async function run4(headless: boolean = true) {
     }
 }
 
-
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
@@ -323,14 +322,11 @@ async function run(headless: boolean = true) {
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
 
-        // Ловим console сообщения из страницы
-        //page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-
         try {
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            // --- Обработка pop-up ---
+            // ---------- POP-UP ----------
             try {
                 await page.waitForSelector(
                     'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
@@ -340,26 +336,26 @@ async function run(headless: boolean = true) {
                 console.log('Pop-up detected, using keyboard to interact');
 
                 await page.focus('body');
-
-                // Навигация через клавиши: Tab → чекбокс → Tab → кнопка
                 await page.keyboard.press('Tab');
-                await page.keyboard.press('Space'); // ставим галку
+                await page.keyboard.press('Space');
                 await page.keyboard.press('Tab');
-                await page.keyboard.press('Enter'); // нажимаем "Продолжить"
-
-                console.log('Pop-up bypassed using keyboard');
+                await page.keyboard.press('Enter');
 
                 await page.waitForTimeout(3000);
             } catch (err) {
-                console.log('Pop-up not found or keyboard handling failed:', err);
+                console.log('Pop-up not found or keyboard handling failed');
             }
 
-            // --- Клик на кнопку "Активные элитные сделки" ---
+            // ---------- КНОПКА ----------
             try {
                 await page.waitForFunction(() => {
-                    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
-                    return buttons.some(btn =>
-                        btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
+                    const buttons = Array.from(
+                        document.querySelectorAll<HTMLButtonElement>('button.bit-button')
+                    );
+                    return buttons.some(
+                        btn =>
+                            btn.offsetParent !== null &&
+                            btn.innerText.trim() === 'Активные элитные сделки'
                     );
                 }, { timeout: 15000 });
 
@@ -380,16 +376,15 @@ async function run(headless: boolean = true) {
                 } else {
                     await targetButton.scrollIntoViewIfNeeded();
                     await targetButton.click({ force: true });
-                    console.log('Clicked correct "Активные элитные сделки" button');
+                    console.log('Clicked "Активные элитные сделки"');
                 }
             } catch (err) {
                 console.log('Failed to click the correct button:', err);
             }
 
-            // --- Скриншот страницы ---
             await scren(page, 'Это скриншот');
 
-            // --- Получение текста страницы и поиск ордера ---
+            // ---------- ЧТЕНИЕ ТЕКСТА ----------
             try {
                 const pageText = await page.evaluate(() => document.body.innerText);
 
@@ -399,15 +394,18 @@ async function run(headless: boolean = true) {
                     .filter(Boolean);
 
                 const pnlIndex = lines.findIndex(line => line === 'Ордер №');
+
                 let valueLine = 'NOT_FOUND';
-                if (pnlIndex > 0) {
-                    valueLine = lines[pnlIndex + 1] +  lines[pnlIndex + 2] +  lines[pnlIndex + 3] +  lines[pnlIndex + 4]  +  lines[pnlIndex + 5] +  lines[pnlIndex + 6] +  lines[pnlIndex + 7] +  lines[pnlIndex + 8]  +  lines[pnlIndex + 9] +  lines[pnlIndex + 10];
+                if (pnlIndex >= 0 && lines.length >= pnlIndex + 2) {
+                    valueLine = lines
+                        .slice(pnlIndex + 1, pnlIndex + 11)
+                        .join(' ');
                 }
 
                 console.log(valueLine);
                 results.push(`ID: ${id} | Profit: ${valueLine}`);
             } catch (err) {
-                console.error(`Ошибка для ${id}:`, err);
+                console.error(`Ошибка парсинга для ${id}:`, err);
                 results.push(`ID: ${id} | ERROR`);
             }
 
@@ -417,12 +415,8 @@ async function run(headless: boolean = true) {
         }
     }
 
-    // Закрываем браузер
     await browser.close();
 
-
-    // Отправка файла в Telegram без сохранения на диск
-    // после сбора всех results
     const fileContent = results.join('\n');
 
     await sendFileToTelegramFromMemory(
@@ -430,7 +424,8 @@ async function run(headless: boolean = true) {
         'copy_trading_result.txt',
         `Результаты копитрейдинга (${results.length})`
     );
-}   
+}
+
 
 (async () => {
 
