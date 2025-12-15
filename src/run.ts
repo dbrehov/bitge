@@ -393,16 +393,23 @@ async function run(headless: boolean = true) {
                     .map(l => l.trim())
                     .filter(Boolean);
 
-                const pnlIndex = lines.findIndex(line => line === 'Ордер №');
 
-                let valueLine = 'NOT_FOUND';
-                if (pnlIndex >= 0) {
-                    valueLine = lines
-                    .slice(pnlIndex)      // ВСЕ строки от "Ордер №"
-                    .join('\n');          // и до конца страницы
-                }
+const startIndex = lines.findIndex(line => line === 'Ордер №');
+const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-                console.log(valueLine);
+let valueLine = 'NOT_FOUND';
+
+if (startIndex >= 0) {
+    valueLine = lines
+        .slice(
+            startIndex,
+            endIndex > startIndex ? endIndex : lines.length
+        )
+        .join('\n');
+}
+
+console.log(valueLine);
+
                 results.push(`ID: ${id} | Profit: ${valueLine}`);
             } catch (err) {
                 console.error(`Ошибка парсинга для ${id}:`, err);
