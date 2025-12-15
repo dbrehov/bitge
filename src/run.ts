@@ -438,7 +438,6 @@ try {
     console.error(`Ошибка парсинга для ${id}:`, err);
     results.push(`ID: ${id} | ERROR`);
 }
-
         } catch (err) {
             console.log('Error handling page navigation:', err);
             results.push(`ID: ${id} | ERROR`);
@@ -457,7 +456,7 @@ try {
 
 
 (async () => {
-await run(48, false);
+await run(4, false);
 
   //await run(false);
   //await run();
