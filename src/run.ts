@@ -377,6 +377,7 @@ async function run(headless: boolean = true) {
             }
 
             await scren(page, 'Это скриншот');
+
 // ---------- ЧТЕНИЕ ТЕКСТА ----------
 try {
     const pageText = await page.evaluate(() => document.body.innerText);
@@ -398,13 +399,20 @@ try {
 
             // Если строка соответствует условию окончания сделки
             if (/^\d{19}$/.test(line) && block.join(' ').includes('USDT') && block.join(' ').length >= 5) {
-                // --- преобразуем дату и время внутри блока ---
+                // --- безопасное преобразование даты/времени ---
                 if (block.length > 6) {
-                    const dateStr = block[5]; // дата 'YYYY-MM-DD'
-                    const timeStr = block[6]; // время 'HH:MM:SS'
-                    const dateObj = new Date(`${dateStr}T${timeStr}`);
-                    block[5] = dateObj.toISOString().split('T')[0];      // 'YYYY-MM-DD'
-                    block[6] = dateObj.toISOString().split('T')[1].split('.')[0]; // 'HH:MM:SS'
+                    const dateStr = block[5];
+                    const timeStr = block[6];
+                    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                    const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+
+                    if (dateRegex.test(dateStr) && timeRegex.test(timeStr)) {
+                        const dateObj = new Date(`${dateStr}T${timeStr}`);
+                        if (!isNaN(dateObj.getTime())) {
+                            block[5] = dateObj.toISOString().split('T')[0];      // YYYY-MM-DD
+                            block[6] = dateObj.toISOString().split('T')[1].split('.')[0]; // HH:MM:SS
+                        }
+                    }
                 }
 
                 blocks.push(block);
