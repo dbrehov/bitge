@@ -394,20 +394,23 @@ async function run(headless: boolean = true) {
                     .filter(Boolean);
 
 
+
 const startIndex = lines.findIndex(line => line === 'Ордер №');
 const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-let valueLine = 'NOT_FOUND';
+let orderLines: string[] = [];
 
 if (startIndex >= 0) {
-    const sliceStart = startIndex + 1;
+    const sliceStart = startIndex + 1; // после "Ордер №"
     const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-    valueLine = lines
-        .slice(sliceStart, sliceEnd)
-        .join(' ');
+    orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
 }
 
+// Пример отправки построчно
+for (const line of orderLines) {
+    await sendMessageToTelegram(line); // твоя функция отправки
+}
 console.log(valueLine);
 
 
