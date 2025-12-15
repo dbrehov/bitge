@@ -395,23 +395,22 @@ async function run(headless: boolean = true) {
 
 
 
+
 const startIndex = lines.findIndex(line => line === 'Ордер №');
 const endIndex = lines.findIndex(line => line === 'О Bitget');
-
-let orderLines: string[] = [];
 
 if (startIndex >= 0) {
     const sliceStart = startIndex + 1; // после "Ордер №"
     const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-    orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+    const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+
+    // Отправляем каждую строку в Telegram
+    for (const line of orderLines) {
+        await sendToTelegram(line);
+    }
 }
 
-// Пример отправки построчно
-for (const line of orderLines) {
-    await sendMessageToTelegram(line); // твоя функция отправки
-}
-console.log(valueLine);
 
 
                 results.push(`ID: ${id} | Profit: ${valueLine}`);
