@@ -382,6 +382,7 @@ async function run(
 
             await scren(page, 'Это скриншот');
 
+
 // ---------- ЧТЕНИЕ ТЕКСТА ----------
 try {
     const pageText = await page.evaluate(() => document.body.innerText);
@@ -411,21 +412,25 @@ try {
             }
         }
 
-        const cutoffDate = new Date();
-        cutoffDate.setHours(cutoffDate.getHours() - hoursThreshold);
+        // Текущая дата и порог в часах
+        const now = new Date();
+        const thresholdTime = new Date(now.getTime() - hoursThreshold * 60 * 60 * 1000);
 
-        console.log(`Собираем строки не позднее ${cutoffDate.toISOString()}`);
+        console.log(`Собираем строки не позднее ${hoursThreshold} часов назад (${thresholdTime.toISOString()})`);
 
         for (const b of blocks) {
-            const dateTimeStr = b[6]; // дата и время в одном элементе
-            const blockDate = new Date(dateTimeStr);
+            // Проверяем тикер (первый элемент) только если symbolFilter задан
+            if (symbolFilter && !b[0].includes(symbolFilter)) continue;
 
-            if (isNaN(blockDate.getTime())) {
+            const dateStr = b[6]; // дата и время в формате YYYY-MM-DD HH:mm:ss
+            const date = new Date(dateStr);
+
+            if (isNaN(date.getTime())) {
                 console.log('Неверный формат даты/времени в блоке:', b);
                 continue;
             }
 
-            if (blockDate >= cutoffDate) {
+            if (date >= thresholdTime) {
                 const blockText = b.join(' ');
                 await sendToTelegram(blockText);
                 results.push(`ID: ${id} | Profit: ${blockText}`);
