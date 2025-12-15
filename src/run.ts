@@ -396,10 +396,10 @@ async function run(headless: boolean = true) {
                 const pnlIndex = lines.findIndex(line => line === 'Ордер №');
 
                 let valueLine = 'NOT_FOUND';
-                if (pnlIndex >= 0 && lines.length >= pnlIndex + 2) {
+                if (pnlIndex >= 0) {
                     valueLine = lines
-                        .slice(pnlIndex + 1, pnlIndex + 11)
-                        .join(' ');
+                    .slice(pnlIndex)      // ВСЕ строки от "Ордер №"
+                    .join('\n');          // и до конца страницы
                 }
 
                 console.log(valueLine);
