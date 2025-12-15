@@ -398,7 +398,7 @@ async function run(headless: boolean = true) {
                     for (const line of orderLines) {
                         if (line === '--') continue; // пропускаем разделители
                         block.push(line);
-                        if (block.length === 10) { // собираем блок из 13 строк
+                        if (block.length === 9) { // собираем блок из 13 строк
                             blocks.push(block.join(' '));
                             block = [];
                         }
