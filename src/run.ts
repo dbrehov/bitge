@@ -384,43 +384,39 @@ async function run(headless: boolean = true) {
 
             await scren(page, 'Это скриншот');
 
-            // ---------- ЧТЕНИЕ ТЕКСТА ----------
-            try {
-                const pageText = await page.evaluate(() => document.body.innerText);
+// ---------- ЧТЕНИЕ ТЕКСТА ----------
+try {
+    const pageText = await page.evaluate(() => document.body.innerText);
 
-                const lines = pageText
-                    .split('\n')
-                    .map(l => l.trim())
-                    .filter(Boolean);
+    const lines = pageText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
 
-                const startIndex = lines.findIndex(line => line === 'Ордер №');
-                const endIndex = lines.findIndex(line => line === 'О Bitget');
+    const startIndex = lines.findIndex(line => line === 'Ордер №');
+    const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-                let orderLines: string[] = [];
+    if (startIndex >= 0) {
+        const sliceStart = startIndex + 1; // после "Ордер №"
+        const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-                if (startIndex >= 0) {
-                    const sliceStart = startIndex + 1; // после "Ордер №"
-                    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+        const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк между Ордер № и О Bitget
 
-                    orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+        const RECORD_LENGTH = 13; // количество строк в одной записи ордера
 
-                    // Отправляем каждую строку в Telegram
-                    for (const line of orderLines) {
-                        await sendToTelegram(line);
-                    }
-                }
-
-                // Сохраняем результат для файла
-                if (orderLines.length > 0) {
-                    const orderText = orderLines.join(' '); // склеиваем в одну строку для файла
-                    results.push(`ID: ${id} | Profit: ${orderText}`);
-                } else {
-                    results.push(`ID: ${id} | NOT_FOUND`);
-                }
-            } catch (err) {
-                console.error(`Ошибка парсинга для ${id}:`, err);
-                results.push(`ID: ${id} | ERROR`);
-            }
+        for (let i = 0; i < orderLines.length; i += RECORD_LENGTH) {
+            const orderChunk = orderLines.slice(i, i + RECORD_LENGTH);
+            const orderText = orderChunk.join(' '); // склеиваем строки одной записи
+            await sendToTelegram(orderText);        // отправляем одной строкой в Telegram
+            results.push(`ID: ${id} | Profit: ${orderText}`);
+        }
+    } else {
+        results.push(`ID: ${id} | NOT_FOUND`);
+    }
+} catch (err) {
+    console.error(`Ошибка парсинга для ${id}:`, err);
+    results.push(`ID: ${id} | ERROR`);
+}
 
         } catch (err) {
             console.log('Error handling page navigation:', err);
