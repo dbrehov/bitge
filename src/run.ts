@@ -378,50 +378,52 @@ async function run(headless: boolean = true) {
 
             await scren(page, 'Это скриншот');
 
-            // ---------- ЧТЕНИЕ ТЕКСТА ----------
-            try {
-                const pageText = await page.evaluate(() => document.body.innerText);
-                const lines = pageText.split('\n').map(l => l.trim()).filter(Boolean);
+          
+// ---------- ЧТЕНИЕ ТЕКСТА ----------
+try {
+    const pageText = await page.evaluate(() => document.body.innerText);
+    const lines = pageText.split('\n').map(l => l.trim()).filter(Boolean);
 
-                const startIndex = lines.findIndex(line => line === 'Ордер №');
-                const endIndex = lines.findIndex(line => line === 'О Bitget');
+    const startIndex = lines.findIndex(line => line === 'Ордер №');
+    const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-                if (startIndex >= 0) {
-                    const sliceStart = startIndex + 1; // после "Ордер №"
-                    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+    if (startIndex >= 0) {
+        const sliceStart = startIndex + 1; // после "Ордер №"
+        const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-                    const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+        const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+        const blocks: string[][] = [];
+        let block: string[] = [];
 
-                    const blocks: string[] = [];
-                    let block: string[] = [];
+        for (const line of orderLines) {
+            block.push(line);
 
-                    for (const line of orderLines) {
-                        if (line === '--') continue; // пропускаем разделители
-                        block.push(line);
-                        if (block.length === 9) { // собираем блок из 13 строк
-                            blocks.push(block.join(' '));
-                            block = [];
-                        }
-                    }
-                    if (block.length > 0) {
-                        blocks.push(block.join(' '));
-                    }
-
-                    // Отправляем каждый блок в Telegram
-                    for (const b of blocks) {
-                        await sendToTelegram(b);
-                    }
-
-                    // Сохраняем результат для файла
-                    const orderText = orderLines.join(' ');
-                    results.push(`ID: ${id} | Profit: ${orderText}`);
-                } else {
-                    results.push(`ID: ${id} | NOT_FOUND`);
-                }
-            } catch (err) {
-                console.error(`Ошибка парсинга для ${id}:`, err);
-                results.push(`ID: ${id} | ERROR`);
+            // Если строка соответствует условию окончания сделки
+            if (/^\d{19}$/.test(line) && block.join(' ').includes('USDT') && block.join(' ').length >= 5) {
+                blocks.push(block);
+                block = [];
             }
+        }
+
+        // Отправляем каждый блок в Telegram и сохраняем в results
+        for (const b of blocks) {
+            const blockText = b.join(' ');
+            await sendToTelegram(blockText);
+            results.push(`ID: ${id} | Profit: ${blockText}`);
+        }
+
+        if (blocks.length === 0) {
+            results.push(`ID: ${id} | NOT_FOUND`);
+        }
+
+    } else {
+        results.push(`ID: ${id} | NOT_FOUND`);
+    }
+
+} catch (err) {
+    console.error(`Ошибка парсинга для ${id}:`, err);
+    results.push(`ID: ${id} | ERROR`);
+}
 
         } catch (err) {
             console.log('Error handling page navigation:', err);
