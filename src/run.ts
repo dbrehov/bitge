@@ -392,6 +392,12 @@ try {
         const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
         const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+
+        const now = new Date();
+        const cutoffDate = new Date(now.getTime() - hoursThreshold * 60 * 60 * 1000);
+
+        console.log(`Собираем строки не позднее: ${cutoffDate.toISOString()} (текущая дата минус ${hoursThreshold} часов)`);
+
         const blocks: string[][] = [];
         let block: string[] = [];
 
@@ -403,8 +409,6 @@ try {
                 block = [];
             }
         }
-
-        const now = new Date();
 
         // Отправляем каждый блок в Telegram и сохраняем в results
         let sentCount = 0;
@@ -420,9 +424,8 @@ try {
                 continue;
             }
 
-            const diffHours = (now.getTime() - blockDate.getTime()) / (1000 * 60 * 60);
-
-            if (diffHours <= hoursThreshold) {
+            // Сравниваем с cutoffDate
+            if (blockDate >= cutoffDate) {
                 const blockText = b.join(' ');
                 await sendToTelegram(blockText);
                 results.push(`ID: ${id} | Profit: ${blockText}`);
@@ -441,6 +444,8 @@ try {
     console.error(`Ошибка парсинга для ${id}:`, err);
     results.push(`ID: ${id} | ERROR`);
 }
+
+
         } catch (err) {
             console.log('Error handling page navigation:', err);
             results.push(`ID: ${id} | ERROR`);
