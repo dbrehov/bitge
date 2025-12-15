@@ -384,39 +384,51 @@ async function run(headless: boolean = true) {
 
             await scren(page, 'Это скриншот');
 
-// ---------- ЧТЕНИЕ ТЕКСТА ----------
-try {
-    const pageText = await page.evaluate(() => document.body.innerText);
+            // ---------- ЧТЕНИЕ ТЕКСТА ----------
+            try {
+                const pageText = await page.evaluate(() => document.body.innerText);
 
-    const lines = pageText
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean);
+                const lines = pageText
+                    .split('\n')
+                    .map(l => l.trim())
+                    .filter(Boolean);
 
-    const startIndex = lines.findIndex(line => line === 'Ордер №');
-    const endIndex = lines.findIndex(line => line === 'О Bitget');
+                const startIndex = lines.findIndex(line => line === 'Ордер №');
+                const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-    if (startIndex >= 0) {
-        const sliceStart = startIndex + 1; // после "Ордер №"
-        const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+                if (startIndex >= 0) {
+                    const sliceStart = startIndex + 1; // после "Ордер №"
+                    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-        const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк между Ордер № и О Bitget
+                    const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
 
-        const RECORD_LENGTH = 13; // количество строк в одной записи ордера
+                    // Обработка даты и времени для сортировки
+                    const dateTimeRegex = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/;
 
-        for (let i = 0; i < orderLines.length; i += RECORD_LENGTH) {
-            const orderChunk = orderLines.slice(i, i + RECORD_LENGTH);
-            const orderText = orderChunk.join(' '); // склеиваем строки одной записи
-            await sendToTelegram(orderText);        // отправляем одной строкой в Telegram
-            results.push(`ID: ${id} | Profit: ${orderText}`);
-        }
-    } else {
-        results.push(`ID: ${id} | NOT_FOUND`);
-    }
-} catch (err) {
-    console.error(`Ошибка парсинга для ${id}:`, err);
-    results.push(`ID: ${id} | ERROR`);
-}
+                    const processedLines = orderLines.map(line => {
+                        if (dateTimeRegex.test(line)) {
+                            const dt = new Date(line);
+                            return dt.toISOString().replace(/[-:T]/g, '').slice(0, 14);
+                        }
+                        return line;
+                    });
+
+                    // Отправляем каждую строку в Telegram построчно
+                    for (const line of processedLines) {
+                        await sendToTelegram(line);
+                    }
+
+                    // Склеиваем строку для сохранения в results
+                    const orderText = processedLines.join(' ');
+                    results.push(`ID: ${id} | Profit: ${orderText}`);
+                } else {
+                    results.push(`ID: ${id} | NOT_FOUND`);
+                }
+
+            } catch (err) {
+                console.error(`Ошибка парсинга для ${id}:`, err);
+                results.push(`ID: ${id} | ERROR`);
+            }
 
         } catch (err) {
             console.log('Error handling page navigation:', err);
@@ -436,7 +448,8 @@ try {
 }
 
 
-(async () => {
+
+ (async () => {
 
   await run(false);
   //await run();
