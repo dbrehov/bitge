@@ -378,11 +378,13 @@ async function run(hoursThreshold: number = 24, headless: boolean = true) {
 
             await scren(page, 'Это скриншот');
 
-
-// ---------- ЧТЕНИЕ ТЕКСТА С ФИЛЬТРОМ ПО ВРЕМЕНИ ----------
+// ---------- ЧТЕНИЕ ТЕКСТА ----------
 try {
     const pageText = await page.evaluate(() => document.body.innerText);
-    const lines = pageText.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = pageText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
 
     const startIndex = lines.findIndex(line => line === 'Ордер №');
     const endIndex = lines.findIndex(line => line === 'О Bitget');
@@ -392,59 +394,50 @@ try {
         const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
         const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
-
-        const now = new Date();
-        const cutoffDate = new Date(now.getTime() - hoursThreshold * 60 * 60 * 1000);
-
-        console.log(`Собираем строки не позднее: ${cutoffDate.toISOString()} (текущая дата минус ${hoursThreshold} часов)`);
-
         const blocks: string[][] = [];
         let block: string[] = [];
 
-        // Разбиваем на блоки по условию: строка оканчивается 19-значным ID, содержит 'USDT' и длина >=5
         for (const line of orderLines) {
             block.push(line);
+
+            // Если строка соответствует условию окончания сделки
             if (/^\d{19}$/.test(line) && block.join(' ').includes('USDT') && block.join(' ').length >= 5) {
                 blocks.push(block);
                 block = [];
             }
         }
 
-        // Отправляем каждый блок в Telegram и сохраняем в results
-        let sentCount = 0;
-        for (const b of blocks) {
-            // Элементы с датой и временем обычно 7-й и 8-й в блоке (0-based)
-            const dateStr = b[6]; // "2025-12-15"
-            const timeStr = b[7]; // "10:57:30"
+        const cutoffDate = new Date();
+        cutoffDate.setHours(cutoffDate.getHours() - hoursThreshold);
 
-            // Создаём объект Date
-            const blockDate = new Date(`${dateStr}T${timeStr}`);
+        console.log(`Собираем строки не позднее ${cutoffDate.toISOString()}`);
+
+        for (const b of blocks) {
+            const dateTimeStr = b[6]; // дата и время в одном элементе
+            const blockDate = new Date(dateTimeStr);
+
             if (isNaN(blockDate.getTime())) {
                 console.log('Неверный формат даты/времени в блоке:', b);
                 continue;
             }
 
-            // Сравниваем с cutoffDate
             if (blockDate >= cutoffDate) {
                 const blockText = b.join(' ');
                 await sendToTelegram(blockText);
                 results.push(`ID: ${id} | Profit: ${blockText}`);
-                sentCount++;
             }
         }
 
-        if (sentCount === 0) {
-            results.push(`ID: ${id} | NO_RECENT_ORDERS`);
+        if (blocks.length === 0) {
+            results.push(`ID: ${id} | NOT_FOUND`);
         }
     } else {
         results.push(`ID: ${id} | NOT_FOUND`);
     }
-
 } catch (err) {
     console.error(`Ошибка парсинга для ${id}:`, err);
     results.push(`ID: ${id} | ERROR`);
 }
-
 
         } catch (err) {
             console.log('Error handling page navigation:', err);
