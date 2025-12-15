@@ -411,8 +411,6 @@ if (startIndex >= 0) {
     }
 }
 
-
-
                 results.push(`ID: ${id} | Profit: ${valueLine}`);
             } catch (err) {
                 console.error(`Ошибка парсинга для ${id}:`, err);
