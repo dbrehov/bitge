@@ -324,7 +324,7 @@ async function run(headless: boolean = true) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
 
         // Ловим console сообщения из страницы
-        page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
+        //page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
         try {
             console.log(`\n===== ${id} =====`);
