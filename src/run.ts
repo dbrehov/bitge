@@ -465,11 +465,12 @@ try {
 
 
 (async () => {
-//await run(4, false);
-await run('BNB', 24, false);
+    //await run(4, false);
+    //await run('BNB', 24, false);
 
-  //await run(false);
-  //await run();
+    await run(null, 48, false);
+    //await run(false);
+    //await run();
 
 })();
 
