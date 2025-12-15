@@ -465,7 +465,7 @@ async function run(hoursThreshold: number = 24, headless: boolean = true) {
 
 
 (async () => {
-await run(24, false);
+await run(2, false);
 
   //await run(false);
   //await run();
