@@ -309,14 +309,12 @@ async function run4(headless: boolean = true) {
 
 async function run(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
-
     const ids = fs
         .readFileSync(idsFile, 'utf-8')
         .split(/\r?\n/)
         .filter(Boolean);
 
     const results: string[] = [];
-
     const { browser, page } = await launchBrowser(headless);
 
     for (const id of ids) {
@@ -342,20 +340,16 @@ async function run(headless: boolean = true) {
                 await page.keyboard.press('Enter');
 
                 await page.waitForTimeout(3000);
-            } catch (err) {
+            } catch {
                 console.log('Pop-up not found or keyboard handling failed');
             }
 
             // ---------- КНОПКА ----------
             try {
                 await page.waitForFunction(() => {
-                    const buttons = Array.from(
-                        document.querySelectorAll<HTMLButtonElement>('button.bit-button')
-                    );
+                    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
                     return buttons.some(
-                        btn =>
-                            btn.offsetParent !== null &&
-                            btn.innerText.trim() === 'Активные элитные сделки'
+                        btn => btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
                     );
                 }, { timeout: 15000 });
 
@@ -384,57 +378,50 @@ async function run(headless: boolean = true) {
 
             await scren(page, 'Это скриншот');
 
-  
-// ---------- ЧТЕНИЕ ТЕКСТА ----------
-try {
-    const pageText = await page.evaluate(() => document.body.innerText);
+            // ---------- ЧТЕНИЕ ТЕКСТА ----------
+            try {
+                const pageText = await page.evaluate(() => document.body.innerText);
+                const lines = pageText.split('\n').map(l => l.trim()).filter(Boolean);
 
-    const lines = pageText
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean);
+                const startIndex = lines.findIndex(line => line === 'Ордер №');
+                const endIndex = lines.findIndex(line => line === 'О Bitget');
 
-    const startIndex = lines.findIndex(line => line === 'Ордер №');
-    const endIndex = lines.findIndex(line => line === 'О Bitget');
+                if (startIndex >= 0) {
+                    const sliceStart = startIndex + 1; // после "Ордер №"
+                    const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
 
-    if (startIndex >= 0) {
-        const sliceStart = startIndex + 1; // после "Ордер №"
-        const sliceEnd = endIndex > sliceStart ? endIndex : lines.length;
+                    const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
 
-        const orderLines = lines.slice(sliceStart, sliceEnd); // массив строк
+                    const blocks: string[] = [];
+                    let block: string[] = [];
 
-        const blocks: string[][] = [];
-        let block: string[] = [];
+                    for (const line of orderLines) {
+                        if (line === '--') continue; // пропускаем разделители
+                        block.push(line);
+                        if (block.length === 13) { // собираем блок из 13 строк
+                            blocks.push(block.join(' '));
+                            block = [];
+                        }
+                    }
+                    if (block.length > 0) {
+                        blocks.push(block.join(' '));
+                    }
 
-        for (const line of orderLines) {
-            if (line === '--') continue; // пропускаем разделители
-            block.push(line);
-            // Делаем блок из двух строк
-            if (block.length === 2) {
-                blocks.push([...block]);
-                block = [];
+                    // Отправляем каждый блок в Telegram
+                    for (const b of blocks) {
+                        await sendToTelegram(b);
+                    }
+
+                    // Сохраняем результат для файла
+                    const orderText = orderLines.join(' ');
+                    results.push(`ID: ${id} | Profit: ${orderText}`);
+                } else {
+                    results.push(`ID: ${id} | NOT_FOUND`);
+                }
+            } catch (err) {
+                console.error(`Ошибка парсинга для ${id}:`, err);
+                results.push(`ID: ${id} | ERROR`);
             }
-        }
-        // Если осталась неполная пара, добавляем её
-        if (block.length > 0) blocks.push([...block]);
-
-        // Отправляем каждую пару в Telegram построчно
-        for (const b of blocks) {
-            const text = b.join('\n');
-            await sendToTelegram(text);
-        }
-
-        // Сохраняем результат в одну строку для файла
-        const orderText = orderLines.join(' ');
-        results.push(`ID: ${id} | Profit: ${orderText}`);
-    } else {
-        results.push(`ID: ${id} | NOT_FOUND`);
-    }
-
-} catch (err) {
-    console.error(`Ошибка парсинга для ${id}:`, err);
-    results.push(`ID: ${id} | ERROR`);
-}
 
         } catch (err) {
             console.log('Error handling page navigation:', err);
@@ -445,7 +432,6 @@ try {
     await browser.close();
 
     const fileContent = results.join('\n');
-
     await sendFileToTelegramFromMemory(
         fileContent,
         'copy_trading_result.txt',
@@ -454,8 +440,7 @@ try {
 }
 
 
-
- (async () => {
+(async () => {
 
   await run(false);
   //await run();
