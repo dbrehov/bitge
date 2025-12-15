@@ -307,7 +307,11 @@ async function run4(headless: boolean = true) {
     }
 }
 
-async function run(hoursThreshold: number = 24, headless: boolean = true) {
+async function run(
+    symbolFilter: string | null = null, // фильтр по тикеру, например 'BTC'; если null, фильтр не применяется
+    hoursThreshold: number = 24,        // порог по времени в часах
+    headless: boolean = true             // запуск браузера в headless режиме
+) {
     const idsFile = path.resolve('ids.txt');
     const ids = fs
         .readFileSync(idsFile, 'utf-8')
@@ -457,6 +461,7 @@ try {
 
 (async () => {
 await run(4, false);
+await run('BNB', 24, false);
 
   //await run(false);
   //await run();
