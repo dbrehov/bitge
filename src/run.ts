@@ -90,48 +90,6 @@ async function collectTraderIds(page: Page): Promise<string[]> {
   return ids;
 }
 
-async function closeRestrictedIpByKeyboard(page: any) {
-    try {
-        // Ждём появления диалога
-        await page.waitForSelector(
-            'div[role="dialog"][aria-label]',
-            { timeout: 5000 }
-        );
-
-        console.log('Restricted IP popup detected (keyboard mode)');
-
-        // Даём странице установить фокус
-        await page.waitForTimeout(500);
-
-        // Последовательность TAB до чекбокса и кнопки
-        // Обычно хватает 3–6 TAB, но делаем с запасом
-        for (let i = 0; i < 6; i++) {
-            await page.keyboard.press('Tab');
-            await page.waitForTimeout(150);
-        }
-
-        // SPACE — отметить чекбокс
-        await page.keyboard.press('Space');
-        await page.waitForTimeout(300);
-
-        // ещё TAB до кнопки "Continue"
-        for (let i = 0; i < 3; i++) {
-            await page.keyboard.press('Tab');
-            await page.waitForTimeout(150);
-        }
-
-        // ENTER — подтвердить
-        await page.keyboard.press('Enter');
-
-        await page.waitForTimeout(1500);
-        console.log('Restricted IP popup closed via keyboard');
-    } catch (e) {
-        console.log('Restricted IP popup not shown');
-    }
-}
-
-
-
 async function run1(headless: boolean = true) {
     const idsFile = path.resolve('ids.txt');
 
