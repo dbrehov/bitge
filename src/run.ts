@@ -208,11 +208,18 @@ async function parseOrdersFromPage(
     for (const b of blocks) {
         if (symbolFilter && !b[0].includes(symbolFilter)) continue;
 
-        const dateStr = b[6];
+        // находим элемент, который содержит ":" как время
+        const timeIndex = b.findIndex(el => el.includes(':'));
+        if (timeIndex < 1) {
+            console.log('Неверный формат блока (не найден элемент с временем):', b);
+            continue;
+        }
+
+        const dateStr = `${b[timeIndex - 1]} ${b[timeIndex]}`;
         const date = new Date(dateStr);
 
         if (isNaN(date.getTime())) {
-            console.log('Неверный формат даты/времени в блоке:', b);
+            console.log('Неверный формат даты/времени в блоке:', b, '| Парсили дату/время:', dateStr);
             continue;
         }
 
