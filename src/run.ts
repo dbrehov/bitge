@@ -193,41 +193,55 @@ async function parseOrdersFromPage(
             block = [];
         }
     }
+const now = new Date();
+const thresholdTime = new Date(
+    now.getTime() - hoursThreshold * 60 * 60 * 1000
+);
 
-    const now = new Date();
-    const thresholdTime = new Date(
-        now.getTime() - hoursThreshold * 60 * 60 * 1000
-    );
+console.log(
+    `Собираем строки не позднее ${hoursThreshold} часов назад (${thresholdTime.toISOString()})`
+);
 
-    console.log(
-        `Собираем строки не позднее ${hoursThreshold} часов назад (${thresholdTime.toISOString()})`
-    );
+const result: string[] = [];
 
-    const result: string[] = [];
-
-    for (const b of blocks) {
-        if (symbolFilter && !b[0].includes(symbolFilter)) continue;
-
-        // находим элемент, который содержит ":" как время
-        const timeIndex = b.findIndex(el => el.includes(':'));
-        if (timeIndex < 1) {
-            console.log('Неверный формат блока (не найден элемент с временем):', b);
-            continue;
-        }
-
-        const dateStr = `${b[timeIndex - 1]} ${b[timeIndex]}`;
-        const date = new Date(dateStr);
-
-        if (isNaN(date.getTime())) {
-            console.log('Неверный формат даты/времени в блоке:', b, '| Парсили дату/время:', dateStr);
-            continue;
-        }
-
-        if (date >= thresholdTime) {
-            result.push(b.join(' '));
-        }
+for (const b of blocks) {
+    // Фильтр по символу (тикеру)
+    if (symbolFilter && !b[0].includes(symbolFilter)) {
+        continue;
     }
 
+    // Ищем элемент, в котором есть дата И время
+    const dateTimeIndex = b.findIndex(el =>
+        /\d{4}-\d{2}-\d{2}.*\d{2}:\d{2}:\d{2}/.test(el)
+    );
+
+    if (dateTimeIndex === -1) {
+        console.log(
+            'Неверный формат даты/времени в блоке:',
+            b,
+            '| Не найден элемент с датой и временем'
+        );
+        continue;
+    }
+
+    const dateStr = b[dateTimeIndex];
+    const date = new Date(dateStr);
+
+    if (isNaN(date.getTime())) {
+        console.log(
+            'Неверный формат даты/времени в блоке:',
+            b,
+            '| Парсили:',
+            dateStr
+        );
+        continue;
+    }
+
+    // Фильтр по времени
+    if (date >= thresholdTime) {
+        result.push(b.join(' '));
+    }
+}
 
     return result;
 }
