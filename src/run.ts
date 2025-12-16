@@ -280,6 +280,9 @@ async function run(
                 console.log('Failed to click the correct button:', err);
             }
 
+            // Ждём 3 секунды перед парсингом текста
+            await page.waitForTimeout(3000);
+
             const parsedBlocks = await parseOrdersFromPage(page, symbolFilter, hoursThreshold);
 
             await scren(page, 'Это скриншот');
