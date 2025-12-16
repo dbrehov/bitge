@@ -129,9 +129,7 @@ async function collectTraderIds(page: Page): Promise<string[]> {
     return ids;
 }
 
-async function handleIpPopupOnce(page: Page) {
-    if (popupHandled) return;
-
+async function handlePopup(page: Page) {
     try {
         await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
@@ -147,11 +145,8 @@ async function handleIpPopupOnce(page: Page) {
         await page.keyboard.press('Enter');
 
         await page.waitForTimeout(3000);
-
-        popupHandled = true;
     } catch {
         console.log('Pop-up not found or keyboard handling failed');
-        popupHandled = true;
     }
 }
 
@@ -230,7 +225,6 @@ async function run(
     headless: boolean = true
 ) {
     const idsFile = path.resolve('ids.txt');
-
     const ids = fs
         .readFileSync(idsFile, 'utf-8')
         .split(/\r?\n/)
@@ -246,34 +240,36 @@ async function run(
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            await handleIpPopupOnce(page);
+            await handlePopup(page);
 
             // ---------- КНОПКА ----------
             try {
                 await page.waitForFunction(() => {
-                    return Array.from(
-                        document.querySelectorAll('button.bit-button')
-                    ).some(btn => {
-                        const el = btn as HTMLElement;
-                        return (
-                            el.offsetParent !== null &&
-                            el.innerText.trim() === 'Активные элитные сделки'
-                        );
-                    });
+                    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button.bit-button'));
+                    return buttons.some(
+                        (btn) => btn.offsetParent !== null && btn.innerText.trim() === 'Активные элитные сделки'
+                    );
                 }, { timeout: 15000 });
 
                 const buttons = await page.$$('button.bit-button');
+                let targetButton = null;
 
                 for (const btn of buttons) {
                     const text = (await btn.innerText()).trim();
-                    const box  = await btn.boundingBox();
+                    const box = await btn.boundingBox();
 
                     if (text === 'Активные элитные сделки' && box) {
-                        await btn.scrollIntoViewIfNeeded();
-                        await btn.click({ force: true });
-                        console.log('Clicked "Активные элитные сделки"');
+                        targetButton = btn;
                         break;
                     }
+                }
+
+                if (!targetButton) {
+                    console.log('Target button not found');
+                } else {
+                    await targetButton.scrollIntoViewIfNeeded();
+                    await targetButton.click({ force: true });
+                    console.log('Clicked "Активные элитные сделки"');
                 }
             } catch (err) {
                 console.log('Failed to click the correct button:', err);
@@ -281,26 +277,15 @@ async function run(
 
             await scren(page, 'Это скриншот');
 
-            // ---------- ПАРСИНГ ----------
-            try {
-                const parsedBlocks = await parseOrdersFromPage(
-                    page,
-                    symbolFilter,
-                    hoursThreshold
-                );
+            const parsedBlocks = await parseOrdersFromPage(page, symbolFilter, hoursThreshold);
 
-                if (parsedBlocks.length === 0) {
-                    results.push(`ID: ${id} | NOT_FOUND`);
-                }
+            for (const blockText of parsedBlocks) {
+                await sendToTelegram(blockText);
+                results.push(`ID: ${id} | Profit: ${blockText}`);
+            }
 
-                for (const text of parsedBlocks) {
-                    await sendToTelegram(text);
-                    results.push(`ID: ${id} | Profit: ${text}`);
-                }
-
-            } catch (err) {
-                console.error(`Ошибка парсинга для ${id}:`, err);
-                results.push(`ID: ${id} | ERROR`);
+            if (parsedBlocks.length === 0) {
+                results.push(`ID: ${id} | NOT_FOUND`);
             }
 
         } catch (err) {
@@ -317,9 +302,7 @@ async function run(
         'copy_trading_result.txt',
         `Результаты копитрейдинга (${results.length})`
     );
-}
-
-(async () => {
+}(async () => {
     await run(null, 200, false);
 })();
 
