@@ -311,6 +311,6 @@ async function run(
         `Результаты копитрейдинга (${results.length})`
     );
 }(async () => {
-    await run(null, 200, false);
+    await run(null, 1200, false);
 })();
 
