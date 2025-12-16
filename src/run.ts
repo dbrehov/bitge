@@ -129,7 +129,9 @@ async function collectTraderIds(page: Page): Promise<string[]> {
     return ids;
 }
 
-async function handlePopup(page: Page) {
+async function handleIpPopupOnce(page: Page) {
+    if (popupHandled) return;
+
     try {
         await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
@@ -145,8 +147,11 @@ async function handlePopup(page: Page) {
         await page.keyboard.press('Enter');
 
         await page.waitForTimeout(3000);
+
+        popupHandled = true;
     } catch {
         console.log('Pop-up not found or keyboard handling failed');
+        popupHandled = true;
     }
 }
 
@@ -240,7 +245,7 @@ async function run(
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            await handlePopup(page);
+            await handleIpPopupOnce(page);
 
             // ---------- КНОПКА ----------
             try {
