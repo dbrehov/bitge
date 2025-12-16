@@ -135,10 +135,10 @@ async function handleIpPopupOnce(page: Page) {
     try {
         await page.waitForSelector(
             'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
-            { state: 'visible', timeout: 15000 }
+            { state: 'visible', timeout: 20000 }
         );
 
-        console.log('Pop-up detected, handling once');
+        console.log('Pop-up detected, using keyboard to interact');
 
         await page.focus('body');
         await page.keyboard.press('Tab');
@@ -150,65 +150,75 @@ async function handleIpPopupOnce(page: Page) {
 
         popupHandled = true;
     } catch {
-        console.log('Pop-up not found');
+        console.log('Pop-up not found or keyboard handling failed');
+        popupHandled = true;
     }
-}      
+}
 
-function parseOrderBlocks(
-    lines: string[],
+async function parseOrdersFromPage(
+    page: Page,
     symbolFilter: string | null,
-    thresholdTime: Date
-) {
-    const result = [];
+    hoursThreshold: number
+): Promise<string[]> {
 
-    const startIndex = lines.findIndex(l => l === 'Ордер №');
-    if (startIndex < 0) return result;
+    const pageText = await page.evaluate(() => document.body.innerText);
 
-    const endIndex = lines.findIndex(l => l === 'О Bitget');
-    const sliceEnd = endIndex > startIndex ? endIndex : lines.length;
+    const lines = pageText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
 
-    const orderLines = lines.slice(startIndex + 1, sliceEnd);
+    const startIndex = lines.findIndex(line => line === 'Ордер №');
+    const endIndex   = lines.findIndex(line => line === 'О Bitget');
 
+    if (startIndex < 0) return [];
+
+    const sliceStart = startIndex + 1;
+    const sliceEnd   = endIndex > sliceStart ? endIndex : lines.length;
+
+    const orderLines = lines.slice(sliceStart, sliceEnd);
+
+    const blocks: string[][] = [];
     let block: string[] = [];
 
     for (const line of orderLines) {
         block.push(line);
 
-        // конец сделки — 19-значный id
-        if (!/^\d{19}$/.test(line)) continue;
-
-        if (!block.some(v => v.includes('USDT'))) {
+        if (
+            /^\d{19}$/.test(line) &&
+            block.join(' ').includes('USDT') &&
+            block.join(' ').length >= 5
+        ) {
+            blocks.push(block);
             block = [];
-            continue;
         }
+    }
 
-        if (symbolFilter && !block[0]?.includes(symbolFilter)) {
-            block = [];
-            continue;
-        }
+    const now = new Date();
+    const thresholdTime = new Date(
+        now.getTime() - hoursThreshold * 60 * 60 * 1000
+    );
 
-        const dateStr = block[6]; // YYYY-MM-DD HH:mm:ss
-        const date = new Date(dateStr.replace(' ', 'T'));
+    console.log(
+        `Собираем строки не позднее ${hoursThreshold} часов назад (${thresholdTime.toISOString()})`
+    );
+
+    const result: string[] = [];
+
+    for (const b of blocks) {
+        if (symbolFilter && !b[0].includes(symbolFilter)) continue;
+
+        const dateStr = b[6];
+        const date = new Date(dateStr);
 
         if (isNaN(date.getTime())) {
-            console.log('Неверный формат даты/времени в блоке:', block);
-            block = [];
+            console.log('Неверный формат даты/времени в блоке:', b);
             continue;
         }
 
-        if (date < thresholdTime) {
-            block = [];
-            continue;
+        if (date >= thresholdTime) {
+            result.push(b.join(' '));
         }
-
-        const unix = Math.floor(date.getTime() / 1000);
-
-        result.push({
-            text: block.join(' '),
-            unix
-        });
-
-        block = [];
     }
 
     return result;
@@ -229,16 +239,6 @@ async function run(
     const results: string[] = [];
     const { browser, page } = await launchBrowser(headless);
 
-    const now = new Date();
-    const thresholdTime = new Date(
-        now.getTime() - hoursThreshold * 60 * 60 * 1000
-    );
-
-    console.log(
-        `Собираем строки не позднее ${hoursThreshold} часов назад ` +
-        `(unix=${Math.floor(thresholdTime.getTime() / 1000)})`
-    );
-
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
 
@@ -248,71 +248,76 @@ async function run(
 
             await handleIpPopupOnce(page);
 
-            // кнопка "Активные элитные сделки"
+            // ---------- КНОПКА ----------
             try {
                 await page.waitForFunction(() => {
                     return Array.from(
                         document.querySelectorAll('button.bit-button')
-                    ).some(
-                        b =>
-                            b.offsetParent !== null &&
-                            b.textContent?.trim() === 'Активные элитные сделки'
-                    );
+                    ).some(btn => {
+                        const el = btn as HTMLElement;
+                        return (
+                            el.offsetParent !== null &&
+                            el.innerText.trim() === 'Активные элитные сделки'
+                        );
+                    });
                 }, { timeout: 15000 });
 
                 const buttons = await page.$$('button.bit-button');
 
                 for (const btn of buttons) {
-                    if ((await btn.innerText()).trim() === 'Активные элитные сделки') {
+                    const text = (await btn.innerText()).trim();
+                    const box  = await btn.boundingBox();
+
+                    if (text === 'Активные элитные сделки' && box) {
+                        await btn.scrollIntoViewIfNeeded();
                         await btn.click({ force: true });
+                        console.log('Clicked "Активные элитные сделки"');
                         break;
                     }
                 }
-            } catch {
-                console.log('Кнопка не найдена');
+            } catch (err) {
+                console.log('Failed to click the correct button:', err);
             }
 
             await scren(page, 'Это скриншот');
 
-            const pageText = await page.evaluate(() => document.body.innerText);
+            // ---------- ПАРСИНГ ----------
+            try {
+                const parsedBlocks = await parseOrdersFromPage(
+                    page,
+                    symbolFilter,
+                    hoursThreshold
+                );
 
-            const lines = pageText
-                .split('\n')
-                .map(l => l.trim())
-                .filter(Boolean);
+                if (parsedBlocks.length === 0) {
+                    results.push(`ID: ${id} | NOT_FOUND`);
+                }
 
-            const blocks = parseOrderBlocks(
-                lines,
-                symbolFilter,
-                thresholdTime
-            );
+                for (const text of parsedBlocks) {
+                    await sendToTelegram(text);
+                    results.push(`ID: ${id} | Profit: ${text}`);
+                }
 
-            for (const b of blocks) {
-                console.log(`Trade unix time: ${b.unix}`);
-                await sendToTelegram(`${b.text} | unix=${b.unix}`);
-                results.push(`ID: ${id} | ${b.text} | unix=${b.unix}`);
-            }
-
-            if (blocks.length === 0) {
-                results.push(`ID: ${id} | NOT_FOUND`);
+            } catch (err) {
+                console.error(`Ошибка парсинга для ${id}:`, err);
+                results.push(`ID: ${id} | ERROR`);
             }
 
         } catch (err) {
-            console.error(`Ошибка для ${id}:`, err);
+            console.log('Error handling page navigation:', err);
             results.push(`ID: ${id} | ERROR`);
         }
     }
 
     await browser.close();
 
+    const fileContent = results.join('\n');
     await sendFileToTelegramFromMemory(
-        results.join('\n'),
+        fileContent,
         'copy_trading_result.txt',
         `Результаты копитрейдинга (${results.length})`
     );
 }
-
-
 
 (async () => {
     await run(null, 200, false);
