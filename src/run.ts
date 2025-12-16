@@ -275,9 +275,9 @@ async function run(
                 console.log('Failed to click the correct button:', err);
             }
 
-            await scren(page, 'Это скриншот');
-
             const parsedBlocks = await parseOrdersFromPage(page, symbolFilter, hoursThreshold);
+
+            await scren(page, 'Это скриншот');
 
             for (const blockText of parsedBlocks) {
                 await sendToTelegram(blockText);
