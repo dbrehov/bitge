@@ -321,12 +321,12 @@ async function run(
         } catch (err) {
             console.log('Error handling page navigation:', err);
             results.push(`ID: ${id} | ERROR`);
-        } finally {
+        }// finally {
         // ОБЯЗАТЕЛЬНО
-        //if (!page.isClosed()) {
-            //await page.close();
-        }
-    }
+      //  if (!page.isClosed()) {
+       //     await page.close();
+       // }
+    //}
     }
 
     await browser.close();
