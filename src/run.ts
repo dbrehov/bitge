@@ -6,6 +6,8 @@ import path from 'path';
 import FormData from 'form-data';
 import config from './config';
 
+let popupHandled = false;
+
 async function sendToTelegram(message: string) {
     try {
         await axios.get(
@@ -127,12 +129,98 @@ async function collectTraderIds(page: Page): Promise<string[]> {
     return ids;
 }
 
+async function handleIpPopupOnce(page: Page) {
+    if (popupHandled) return;
+
+    try {
+        await page.waitForSelector(
+            'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
+            { state: 'visible', timeout: 15000 }
+        );
+
+        console.log('Pop-up detected, handling once');
+
+        await page.focus('body');
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Space');
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Enter');
+
+        await page.waitForTimeout(3000);
+
+        popupHandled = true;
+    } catch {
+        console.log('Pop-up not found');
+    }
+}      
+
+function parseOrderBlocks(
+    lines: string[],
+    symbolFilter: string | null,
+    thresholdTime: Date
+) {
+    const result = [];
+
+    const startIndex = lines.findIndex(l => l === 'Ордер №');
+    if (startIndex < 0) return result;
+
+    const endIndex = lines.findIndex(l => l === 'О Bitget');
+    const sliceEnd = endIndex > startIndex ? endIndex : lines.length;
+
+    const orderLines = lines.slice(startIndex + 1, sliceEnd);
+
+    let block: string[] = [];
+
+    for (const line of orderLines) {
+        block.push(line);
+
+        // конец сделки — 19-значный id
+        if (!/^\d{19}$/.test(line)) continue;
+
+        if (!block.some(v => v.includes('USDT'))) {
+            block = [];
+            continue;
+        }
+
+        if (symbolFilter && !block[0]?.includes(symbolFilter)) {
+            block = [];
+            continue;
+        }
+
+        const dateStr = block[6]; // YYYY-MM-DD HH:mm:ss
+        const date = new Date(dateStr.replace(' ', 'T'));
+
+        if (isNaN(date.getTime())) {
+            console.log('Неверный формат даты/времени в блоке:', block);
+            block = [];
+            continue;
+        }
+
+        if (date < thresholdTime) {
+            block = [];
+            continue;
+        }
+
+        const unix = Math.floor(date.getTime() / 1000);
+
+        result.push({
+            text: block.join(' '),
+            unix
+        });
+
+        block = [];
+    }
+
+    return result;
+}
+
 async function run(
     symbolFilter: string | null = null,
     hoursThreshold: number = 24,
     headless: boolean = true
 ) {
     const idsFile = path.resolve('ids.txt');
+
     const ids = fs
         .readFileSync(idsFile, 'utf-8')
         .split(/\r?\n/)
@@ -141,6 +229,16 @@ async function run(
     const results: string[] = [];
     const { browser, page } = await launchBrowser(headless);
 
+    const now = new Date();
+    const thresholdTime = new Date(
+        now.getTime() - hoursThreshold * 60 * 60 * 1000
+    );
+
+    console.log(
+        `Собираем строки не позднее ${hoursThreshold} часов назад ` +
+        `(unix=${Math.floor(thresholdTime.getTime() / 1000)})`
+    );
+
     for (const id of ids) {
         const url = `https://www.bitget.com/ru/copy-trading/trader/${id}/futures-order`;
 
@@ -148,167 +246,73 @@ async function run(
             console.log(`\n===== ${id} =====`);
             await page.goto(url, { waitUntil: 'networkidle' });
 
-            // ---------- POP-UP ----------
-            try {
-                await page.waitForSelector(
-                    'div.mi-overlay div[role="dialog"][aria-label="Ограничение по IP"]',
-                    { state: 'visible', timeout: 20000 }
-                );
+            await handleIpPopupOnce(page);
 
-                console.log('Pop-up detected, using keyboard to interact');
-
-                await page.focus('body');
-                await page.keyboard.press('Tab');
-                await page.keyboard.press('Space');
-                await page.keyboard.press('Tab');
-                await page.keyboard.press('Enter');
-
-                await page.waitForTimeout(3000);
-            } catch {
-                console.log('Pop-up not found or keyboard handling failed');
-            }
-
-            // ---------- КНОПКА ----------
+            // кнопка "Активные элитные сделки"
             try {
                 await page.waitForFunction(() => {
-                    const buttons = Array.from(
-                        document.querySelectorAll<HTMLButtonElement>('button.bit-button')
-                    );
-
-                    return buttons.some(
-                        (btn) =>
-                            btn.offsetParent !== null &&
-                            btn.innerText.trim() === 'Активные элитные сделки'
+                    return Array.from(
+                        document.querySelectorAll('button.bit-button')
+                    ).some(
+                        b =>
+                            b.offsetParent !== null &&
+                            b.textContent?.trim() === 'Активные элитные сделки'
                     );
                 }, { timeout: 15000 });
 
                 const buttons = await page.$$('button.bit-button');
-                let targetButton = null;
 
                 for (const btn of buttons) {
-                    const text = (await btn.innerText()).trim();
-                    const box = await btn.boundingBox();
-
-                    if (text === 'Активные элитные сделки' && box) {
-                        targetButton = btn;
+                    if ((await btn.innerText()).trim() === 'Активные элитные сделки') {
+                        await btn.click({ force: true });
                         break;
                     }
                 }
-
-                if (!targetButton) {
-                    console.log('Target button not found');
-                } else {
-                    await targetButton.scrollIntoViewIfNeeded();
-                    await targetButton.click({ force: true });
-                    console.log('Clicked "Активные элитные сделки"');
-                }
-            } catch (err) {
-                console.log('Failed to click the correct button:', err);
+            } catch {
+                console.log('Кнопка не найдена');
             }
 
             await scren(page, 'Это скриншот');
 
-            // ---------- ЧТЕНИЕ ТЕКСТА ----------
-            try {
-                const pageText = await page.evaluate(
-                    () => document.body.innerText
-                );
+            const pageText = await page.evaluate(() => document.body.innerText);
 
-                const lines = pageText
-                    .split('\n')
-                    .map((l) => l.trim())
-                    .filter(Boolean);
+            const lines = pageText
+                .split('\n')
+                .map(l => l.trim())
+                .filter(Boolean);
 
-                const startIndex = lines.findIndex(
-                    (line) => line === 'Ордер №'
-                );
-                const endIndex = lines.findIndex(
-                    (line) => line === 'О Bitget'
-                );
+            const blocks = parseOrderBlocks(
+                lines,
+                symbolFilter,
+                thresholdTime
+            );
 
-                if (startIndex >= 0) {
-                    const sliceStart = startIndex + 1;
-                    const sliceEnd =
-                        endIndex > sliceStart ? endIndex : lines.length;
-
-                    const orderLines = lines.slice(sliceStart, sliceEnd);
-                    const blocks: string[][] = [];
-                    let block: string[] = [];
-
-                    for (const line of orderLines) {
-                        block.push(line);
-
-                        if (
-                            /^\d{19}$/.test(line) &&
-                            block.join(' ').includes('USDT') &&
-                            block.join(' ').length >= 5
-                        ) {
-                            blocks.push(block);
-                            block = [];
-                        }
-                    }
-
-                    const now = new Date();
-                    const thresholdTime = new Date(
-                        now.getTime() -
-                            hoursThreshold * 60 * 60 * 1000
-                    );
-
-                    console.log(
-                        `Собираем строки не позднее ${hoursThreshold} часов назад (${thresholdTime.toISOString()})`
-                    );
-
-                    for (const b of blocks) {
-                        if (symbolFilter && !b[0].includes(symbolFilter)) {
-                            continue;
-                        }
-
-                        const dateStr = b[6];
-                        const date = new Date(dateStr);
-
-                        if (isNaN(date.getTime())) {
-                            console.log(
-                                'Неверный формат даты/времени в блоке:',
-                                b
-                            );
-                            continue;
-                        }
-
-                        if (date >= thresholdTime) {
-                            const blockText = b.join(' ');
-                            await sendToTelegram(blockText);
-                            results.push(
-                                `ID: ${id} | Profit: ${blockText}`
-                            );
-                        }
-                    }
-
-                    if (blocks.length === 0) {
-                        results.push(`ID: ${id} | NOT_FOUND`);
-                    }
-                } else {
-                    results.push(`ID: ${id} | NOT_FOUND`);
-                }
-            } catch (err) {
-                console.error(`Ошибка парсинга для ${id}:`, err);
-                results.push(`ID: ${id} | ERROR`);
+            for (const b of blocks) {
+                console.log(`Trade unix time: ${b.unix}`);
+                await sendToTelegram(`${b.text} | unix=${b.unix}`);
+                results.push(`ID: ${id} | ${b.text} | unix=${b.unix}`);
             }
+
+            if (blocks.length === 0) {
+                results.push(`ID: ${id} | NOT_FOUND`);
+            }
+
         } catch (err) {
-            console.log('Error handling page navigation:', err);
+            console.error(`Ошибка для ${id}:`, err);
             results.push(`ID: ${id} | ERROR`);
         }
     }
 
     await browser.close();
 
-    const fileContent = results.join('\n');
-
     await sendFileToTelegramFromMemory(
-        fileContent,
+        results.join('\n'),
         'copy_trading_result.txt',
         `Результаты копитрейдинга (${results.length})`
     );
 }
+
+
 
 (async () => {
     await run(null, 200, false);
