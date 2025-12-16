@@ -323,8 +323,8 @@ async function run(
             results.push(`ID: ${id} | ERROR`);
         } finally {
         // ОБЯЗАТЕЛЬНО
-        if (!page.isClosed()) {
-            await page.close();
+        //if (!page.isClosed()) {
+            //await page.close();
         }
     }
     }
