@@ -265,8 +265,10 @@ async function run(
 
         try {
             console.log(`\n===== ${id} =====`);
-            await page.goto(url, { waitUntil: 'networkidle' });
+            //await page.goto(url, { waitUntil: 'networkidle' });
 
+            await page.goto(url);
+            await page.waitForTimeout(3000);
             await handleIpPopupOnce(page);
 
             // ---------- КНОПКА ----------
